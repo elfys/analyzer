@@ -1,0 +1,37 @@
+20/01/2023	09:29
+Bias (V): 	0.000000
+Averaging: 	1
+Dark current (A): 	1.602000E-11
+Temperature (C):	25.518
+Delay after wl change (ms): 	200
+Delay between current readings (ms): 	200
+Used reference calibration file: 	Newport 818-UV calibration data new PD.csv
+Used reference measurement file: 	EQE REF NEWPORT2 begin2 -000V000 calNP2b1.dat
+Calibration used: 	Yes
+Name of operating VI-code: 	Spectral response measurement - 2023-01-18.vi
+Operating VI-code last modified: 	2023-01-18 10:19:00
+Name of saving VI-code: 	Save data to file - 2023-01-18.vi
+Saving VI-code last modified: 	2023-01-18 10:19:01
+Chosen SMU device: Keithley237
+Sent DDC: F0,0O0P5Z0S3W1B0.000E+0,0,0L1.000E-5,0X
+Model and Firmware U0X: 237A06 237A06
+Error Status Word U1X: ERS00000000000000000000000000 ERS00000000000000000000000000
+Stored ASCII String U2X: DSP DSP
+Machine Status Word U3X: MSTG01,0,0K0M008,0N1R1T0,0,0,0V1Y0 MSTG15,0,0K0M008,0N1R1T0,0,0,0V1Y0
+Measurement Parameters U4X: IMPL,00F0,0O0P5S3W1Z0 IMPL,00F0,0O0P5S3W1Z0
+Compliance Value U5X: ICP010.000E-06 ICP010.000E-06
+Suppression Value U6X: ISP+00.0000E+00 ISP+00.0000E+00
+Calibration Status Word U7X: CSP00,1,1 CSP00,1,1
+Defined Sweep Size U8X: DSS0000 DSS0000
+Warning Status Word U9X: WRS0000000000 WRS0000000000
+First Sweep Point in Compliance U10X:  
+Sweep Measure Size U11X: SMS0000 SMS0000
+MEASUREMENT DATA STARTS	 
+Wavelength (nm)	Current (A)	Standard deviation (A)	EQE (%)	Responsivity (A/W)
+200	-8.014300E-9	NaN	137.991160	2.225948E-1
+210	-9.935000E-9	NaN	131.809307	2.232539E-1
+220	-1.124300E-8	NaN	131.409820	2.331762E-1
+230	-4.222000E-9	NaN	124.634295	2.312060E-1
+310	-1.049300E-9	NaN	101.116304	2.528230E-1
+320	-3.079700E-9	NaN	98.506262	2.542421E-1
+330	-5.619500E-9	NaN	97.313439	2.590123E-1

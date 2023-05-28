@@ -1,0 +1,62 @@
+# Configs for a single chip CV measurement on ??? (Innopoli)
+
+instruments:
+  pyvisa:
+    resource: "GPIB0::17::INSTR"
+    kwargs:
+      timeout: 15000
+
+
+measure:
+  - command: ":TRIG:IMM"
+    type: "write"
+  - command: ":MEM:READ? DBUF"
+    type: "query_ascii_values"
+    name: output
+  - command: ":LIST:BIAS:VOLT?"
+    type: "query_ascii_values"
+    name: voltage_input
+  - command: ":MEM:CLE DBUF"
+    type: "write"
+
+chips:
+  - voltage_input:
+      prop: voltage_input
+    capacitance:
+      prop: output
+      slice: [null, null, 4]
+
+
+measurements:
+  - name: "-35v to 0v by 5v"
+    instrument:
+      - "*RST; *CLS"
+      - ":INIT:CONT"
+      - ":TRIG:SOUR EXT"
+      - ":FUNC:IMP:TYPE CSD"
+      - ":FREQ:CW 100000"
+      - ":VOLT:LEVEL 0.02"
+      - ":APER MED"
+      - ":FUNC:IMP:RANGE:AUTO ON"
+      - ":DISP:PAGE LIST"
+      - ":FORM:DATA ASC"
+      - ":LIST:MODE SEQ"
+      - ":LIST:BIAS:VOLT -35, -30, -25, -20, -15, -10, -5, 0"
+      - ":MMEM EXT"
+
+      # Buffer  ### SHOULD WE RUN IT EVERY TIME OR JUST ONCE?
+      - ":MEM:DIM DBUF, 8"
+      - ":MEM:FILL DBUF"
+      - ":BIAS:STAT 1"
+
+    program:
+      validation:
+        output[-4]: # last of output[::4] corresponds to capacitance at 0V
+          min:
+            value: !!float 70e-13
+            message: Capacitance is too low. Check if there is a good contact.
+        output[0]:
+          max:
+            value: !!float 1e+37
+            message: Instrument overflow error
+      measurements_kwargs: {}

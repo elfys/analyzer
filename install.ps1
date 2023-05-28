@@ -15,7 +15,7 @@
     PS> install.ps1
 
     .LINK
-    Online version: https://github.com/dariakriukova/analyzing_sql/
+    Online version: https://github.com/elfys/analyzer
 #>
 
 $AnalyzerDir = "${env:USERPROFILE}\.analyzer"
@@ -33,7 +33,7 @@ Function Main() {
 
     $DownloadPath = "$AnalyzerDir\analyzer.zip"
 
-    $Response = Invoke-RestMethod -Uri https://api.github.com/repos/dariakriukova/analyzing_sql/releases/latest
+    $Response = Invoke-RestMethod -Uri https://api.github.com/repos/elfys/analyzer/releases/latest
     $DownloadURL = $Response.assets[0].browser_download_url
 
     Invoke-WebRequest -UseBasicParsing -Uri $DownloadURL -OutFile $DownloadPath

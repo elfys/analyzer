@@ -1,0 +1,41 @@
+spec: "1.0"
+devices:
+  device:
+    eom:
+      GPIB INSTR:
+        q: "\n"
+        r: "\n"
+    dialogues:
+      - q: "*IDN?"
+        r: "GPIB MOCK"
+      - q: "*OPC?"
+        r: "OK"
+      - q: ":DATA? 'V3'"
+        r: "1.0,2.0,3.0,4.0"
+      - q: ":DATA? 'V4'"
+        r: "1.0,2.0,3.0,4.0"
+      - q: ":DATA? 'I1'"
+        r: "2.0,3.0,4.0,5.0"
+      - q: ":DATA? 'I2'"
+        r: "3.0,4.0,5.0,6.0"
+      - q: ":DATA? 'I3'"
+        r: "4.0,5.0,6.0,7.0"
+      - q: ":DATA? 'I4'"
+        r: "5.0,6.0,7.0,8.0"
+      - q: "printbuffer(1, smua.nvbuffer1.n, smua.nvbuffer1.readings)"
+        r: "1.0,2.0,3.0,4.0"
+      - q: "printbuffer(1, smua.nvbuffer1.n, smua.nvbuffer1.sourcevalues)"
+        r: "-0.01,-10,-20,1"
+      - q: ":MEM:READ? DBUF"
+        r: "1.0,0.0,0.0,0.0,2.0,0.0,0.0,0.0,3.0,0.0,0.0,0.0,4.0,0.0,0.0,0.0"
+      - q: ":LIST:BIAS:VOLT?"
+        r: "-35,-25,-20,-15"
+    error:
+      status_register:
+        - q: "*ESR?"
+          command_error: 32
+          query_error: 4
+
+resources:
+  GPIB::9::INSTR:
+    device: device

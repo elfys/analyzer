@@ -1,0 +1,12 @@
+[MAIN]
+fail-under=6
+
+[MESSAGES CONTROL]
+
+# Disable the message, report, category or checker with the given id(s).
+disable=redefined-outer-name,
+        too-many-arguments,
+        unused-argument,
+        missing-function-docstring,
+        missing-class-docstring,
+        missing-module-docstring,

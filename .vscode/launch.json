@@ -1,0 +1,71 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "measure.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["iv", "--config", "measure/single.yaml", "-w", "TEST", "-s", "1", "-n", "X1033"]
+        },
+        {
+            "name": "Parse dat files",
+            "type": "python",
+            "request": "launch",
+            "program": "analyzer.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["parse"]
+        },
+        {
+            "name": "Parse cv dat files",
+            "type": "python",
+            "request": "launch",
+            "program": "analyzer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["parse", "cv", ".\\data\\*.dat"]
+        },
+        {
+            "name": "Parse Test Structure dat files",
+            "type": "python",
+            "request": "launch",
+            "program": "analyzer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["parse", "ts", ".\\data\\*.dat"]
+        },
+        {
+            "name": "Summarize cv",
+            "type": "python",
+            "request": "launch",
+            "program": "analyzer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["summary", "cv"]
+        },
+        {
+            "name": "Summarize eqe",
+            "type": "python",
+            "request": "launch",
+            "program": "analyzer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["summary", "eqe", "--session", "2023-01-05"]
+        },
+        {
+            "name": "help",
+            "type": "python",
+            "request": "launch",
+            "program": "analyzer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["summary", "--help"]
+        }        
+    ]
+}

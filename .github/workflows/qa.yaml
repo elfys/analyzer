@@ -1,0 +1,47 @@
+name: Quality assurance
+
+on: push
+
+permissions:
+  contents: read
+
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:latest
+        env:
+          MYSQL_ROOT_PASSWORD: pwd
+          MYSQL_DATABASE: test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pipenv'
+
+      - name: Install dependencies
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev --system
+
+      - name: Lint with flake8
+        run: |
+          flake8 . --show-source --statistics
+
+      - name: Analysing the code with pylint
+        run: |
+          pylint --rcfile=.pylintrc --ignore=tests analyzer measure
+          pylint --rcfile=tests.pylintrc analyzer/tests measure/tests
+
+      - name: Run pytest unit tests
+        run: pytest

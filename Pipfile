@@ -1,0 +1,40 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+click = "*"
+colorama = { version = "==0.4.5", sys_platform = "== 'win32'" }
+jsonpath-ng = "*"
+keyring = "==23.7.0"
+matplotlib = "*"
+mysqlclient = "*"
+numpy = "*"
+openpyxl = "*"
+pandas = "==1.4.3"
+pefile = { version = "==2022.5.30", sys_platform = "== 'win32'" }
+pyinstaller = "*"
+pyvisa = "*"
+pywin32 = { sys_platform = "== 'win32'" }
+pywin32-ctypes = { version = "==0.2.0", sys_platform = "== 'win32'" }
+pyyaml = "*"
+scipy = "*"
+sentry-sdk = "*"
+sqlalchemy = "*"
+yoctopuce = "*"
+pyvisa-py = "*"
+gpib-ctypes = { sys_platform = "== 'win32'" }
+asyncmy = "*"
+
+[dev-packages]
+alembic = "*"
+pytest = "*"
+pytest-alembic = "*"
+pyvisa-sim = "*"
+pylint = "*"
+flake8 = "*"
+black = "*"
+
+[requires]
+python_version = "3.10"

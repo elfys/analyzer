@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>DATABASE</ID>
+  <OriginalElement>9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.alembic_version</OriginalElement>
+  <nodes>
+    <node x="263.08125000000007" y="270.5">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.iv_data</node>
+    <node x="590.8312500000001" y="302.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.cv_data</node>
+    <node x="272.58125000000007" y="-107.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.wafer</node>
+    <node x="-361.0" y="232.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.carrier</node>
+    <node x="306.58125000000007" y="64.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip</node>
+    <node x="-77.0" y="232.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_conditions</node>
+    <node x="-353.0" y="364.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_session</node>
+    <node x="-361.0" y="496.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.instrument</node>
+    <node x="-314.0" y="-18.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.alembic_version</node>
+    <node x="-45.5" y="731.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_data</node>
+    <node x="237.08125000000007" y="731.0">9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip_state</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.iv_data" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip_state" relationship="REFERENCES">
+      <point x="57.5" y="-126.0" />
+      <point x="435.58125000000007" y="479.50000000000006" />
+      <point x="409.0" y="479.50000000000006" />
+      <point x="409.0" y="747.75" />
+      <point x="435.58125000000007" y="747.75" />
+      <point x="0.0" y="38.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.wafer" relationship="REFERENCES">
+      <point x="0.0" y="-60.0" />
+      <point x="378.08125000000007" y="67.5" />
+      <point x="378.08125000000007" y="67.5" />
+      <point x="0.0" y="60.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.cv_data" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip_state" relationship="REFERENCES">
+      <point x="52.25" y="-82.0" />
+      <point x="747.5812500000001" y="449.5000000000001" />
+      <point x="700.5812500000001" y="449.5000000000001" />
+      <point x="700.5812500000001" y="769.0" />
+      <point x="435.58125000000007" y="769.0" />
+      <point x="0.0" y="38.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_conditions" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip" relationship="REFERENCES">
+      <point x="42.39999999999999" y="-170.0" />
+      <point x="71.39999999999999" y="409.5000000000001" />
+      <point x="14.5" y="409.5000000000001" />
+      <point x="14.5" y="130.0" />
+      <point x="378.08125000000007" y="130.0" />
+      <point x="0.0" y="60.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_data" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_conditions" relationship="REFERENCES">
+      <point x="0.0" y="-104.0" />
+      <point x="29.0" y="535.0" />
+      <point x="29.0" y="535.0" />
+      <point x="0.0" y="170.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_conditions" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.instrument" relationship="REFERENCES">
+      <point x="-84.80000000000004" y="-170.0" />
+      <point x="-15.0" y="232.0" />
+      <point x="-15.0" y="534.0" />
+      <point x="-286.0" y="534.0" />
+      <point x="0.0" y="38.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_conditions" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_session" relationship="REFERENCES">
+      <point x="-42.400000000000034" y="-170.0" />
+      <point x="4.600000000000023" y="232.0" />
+      <point x="4.600000000000023" y="402.0" />
+      <point x="-286.0" y="402.0" />
+      <point x="0.0" y="38.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.iv_data" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip" relationship="REFERENCES">
+      <point x="-57.5" y="-126.0" />
+      <point x="320.58125000000007" y="286.5000000000001" />
+      <point x="378.08125000000007" y="286.5000000000001" />
+      <point x="0.0" y="60.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_conditions" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip_state" relationship="REFERENCES">
+      <point x="84.8" y="-170.0" />
+      <point x="90.58125000000007" y="232.0" />
+      <point x="90.58125000000007" y="642.5" />
+      <point x="343.58125000000007" y="642.5" />
+      <point x="343.58125000000007" y="769.0" />
+      <point x="435.58125000000007" y="769.0" />
+      <point x="0.0" y="38.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.cv_data" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.chip" relationship="REFERENCES">
+      <point x="-52.25" y="-82.0" />
+      <point x="643.0812500000001" y="336.5000000000001" />
+      <point x="680.8312500000001" y="336.5000000000001" />
+      <point x="680.8312500000001" y="136.50000000000009" />
+      <point x="378.08125000000007" y="136.50000000000009" />
+      <point x="0.0" y="60.0" />
+    </edge>
+    <edge source="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.eqe_conditions" target="9431e722-eb7f-4ea0-a450-6d494e0460d0.TABLE:elfys.carrier" relationship="REFERENCES">
+      <point x="-1.4210854715202004E-14" y="-170.0" />
+      <point x="28.999999999999986" y="270.0" />
+      <point x="-286.0" y="270.0" />
+      <point x="0.0" y="38.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic" zoom="1.0" showDependencies="false" x="341.5" y="348.0000000000001" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Columns</Category>
+    <Category>Comments</Category>
+    <Category>Key columns</Category>
+  </Categories>
+</Diagram>
+

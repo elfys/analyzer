@@ -26,6 +26,7 @@ yoctopuce = "*"
 pyvisa-py = "*"
 gpib-ctypes = { sys_platform = "== 'win32'" }
 asyncmy = "*"
+cryptography = "*"
 
 [dev-packages]
 alembic = "*"

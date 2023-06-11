@@ -30,7 +30,7 @@ def show_wafers(ctx: click.Context, json: bool):
         )
         .join(Wafer.chips)
         .group_by(Wafer.id)
-        .order_by(Wafer.record_created_at)
+        .order_by(Wafer.record_created_at.desc())
     )
     wafers_df = pd.read_sql(wafers_query, session.connection(), index_col="id")
 

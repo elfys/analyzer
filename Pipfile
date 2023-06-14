@@ -25,7 +25,6 @@ sqlalchemy = "*"
 yoctopuce = "*"
 pyvisa-py = "*"
 gpib-ctypes = { sys_platform = "== 'win32'" }
-asyncmy = "*"
 
 [dev-packages]
 alembic = "*"

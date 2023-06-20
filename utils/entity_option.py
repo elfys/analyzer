@@ -31,13 +31,18 @@ class EntityOption(click.Option):
         super().__init__(*args, **kwargs)
 
     def type_cast_value(self, ctx: Context, value):
+        if isinstance(value, self.entity_type):
+            return value
         options = self.get_options(ctx)
         if self.multiple:
             if any(v.upper() == "ALL" for v in value):
                 return options
             return [o for o in options if str(o.id) in value]
         else:
-            return next(o for o in options if str(o.id) == value)
+            options_dict = {
+                str(o.id): o for o in options
+            }
+            return options_dict[value]
 
     def get_options(self, ctx: Context):
         session: Session = ctx.obj["session"]

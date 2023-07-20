@@ -21,7 +21,10 @@ from .common import set_configs, get_raw_measurements, validate_raw_measurements
 @click.option("-w", "--wafer", "wafer_name", prompt="Input wafer name", help="Wafer name.")
 @click.option("-s", "--chip-state", "chip_state", prompt="Input chip state",
               help="State of the chips.", cls=EntityOption, entity_type=ChipState)
-def cv(ctx: click.Context, chip_names: list[str], wafer_name: str, chip_state: ChipState):
+@click.option("--auto", "automatic_mode", is_flag=True,
+              help="Automatic measurement mode. Invalid measurements will be skipped.")
+def cv(ctx: click.Context, chip_names: list[str], wafer_name: str, chip_state: ChipState,
+       automatic_mode: bool):
     instrument: GPIBInstrument = ctx.obj["instrument"]
     session: Session = ctx.obj["session"]
     configs: dict = ctx.obj["configs"]
@@ -48,6 +51,8 @@ def cv(ctx: click.Context, chip_names: list[str], wafer_name: str, chip_state: C
             error_msg = validate_raw_measurements(raw_measurements, validation_config)
             if error_msg is not None:
                 ctx.obj["logger"].warning(error_msg)
+                if automatic_mode:
+                    raise RuntimeError("Measurement is invalid")
                 ctx.obj["logger"].info(
                     "\n" + pprint.pformat(raw_measurements, compact=True, indent=4)
                 )

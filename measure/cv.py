@@ -74,7 +74,6 @@ def cv(ctx: click.Context, chip_names: list[str], wafer_name: str, chip_state: C
 def create_measurements(
     raw_measurements: dict[str, list], chip_config: dict, **kwargs
 ) -> list[CVMeasurement]:
-    print(raw_measurements)
     raw_measurements.get("voltage")
     kwarg_keys = list(chip_config.keys())
 

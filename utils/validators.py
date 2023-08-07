@@ -1,21 +1,7 @@
 import re
 from pathlib import Path
-from typing import Sequence
 
 import click
-
-
-def validate_chip_names(ctx, param, chip_names: Sequence[str]):
-    chip_types = ["A", "B", "C", "D", "E", "F", "G", "J", "U", "V", "X", "Y"]
-    matcher = re.compile(rf'^[{"".join(chip_types)}]\d{{4}}$')
-    valid_chip_names = []
-    for chip_name in map(lambda name: name.upper(), chip_names):
-        if not matcher.match(chip_name):
-            raise click.BadParameter(
-                f'{chip_name} is not valid chip name. It must be in format LXXXX where L is a letter ({", ".join(chip_types)}) and XXXX is a number.'
-            )
-        valid_chip_names.append(chip_name)
-    return valid_chip_names
 
 
 def validate_wafer_name(ctx, param, wafer_name: str):

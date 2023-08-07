@@ -1,16 +1,47 @@
-from typing import List
+import functools
+import re
+from typing import List, Union
 
+import click
 from sqlalchemy import (
     Integer,
-    CHAR,
-    VARCHAR,
+    String,
     ForeignKey,
-    Computed,
     UniqueConstraint,
+    ExecutionContext,
 )
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import relationship, mapped_column, Mapped, validates
 
 from .base import Base
+
+
+@functools.lru_cache()
+def get_chip_name_re() -> re.Pattern:
+    known_chip_types = Chip.chip_sizes.keys()
+    pattern = fr"^(?P<type>[{''.join(known_chip_types)}]H?)(?P<number>\d{{4}})"
+    return re.compile(pattern, re.IGNORECASE)
+
+
+def infer_chip_type(ctx: ExecutionContext) -> Union[str, None]:
+    if ctx.get_current_parameters()["test_structure"]:
+        return "TS"
+
+    chip_name = ctx.get_current_parameters()["name"]
+    match = get_chip_name_re().match(chip_name.upper())
+    if match:
+        return match.group("type")
+
+    return None
+
+
+def validate_chip_name(name: str) -> str:
+    match = get_chip_name_re().match(name.upper())
+    if not match:
+        raise click.BadParameter(f'{name} is not valid chip name.')
+    if match.group("high_resistivity"):
+        return f"{match.group('type')}h{match.group('number')}"
+
+    return f"{match.group('type')}{match.group('number')}"
 
 
 class Chip(Base):
@@ -18,14 +49,24 @@ class Chip(Base):
     __table_args__ = tuple([UniqueConstraint("name", "wafer_id", name="unique_chip")])
 
     chip_sizes = {
-        "X": (1, 1),
-        "Y": (2, 2),
-        "U": (5, 5),
-        "V": (10, 10),
-        "F": (2.56, 1.25),
-        "G": (1.4, 3.25),
         "A": (1.69, 1.69),
         "B": (1.69, 1.69),
+        "C": ...,
+        "D": ...,
+        "E": ...,
+        "F": (2.56, 1.25),
+        "G": (1.4, 3.25),
+        "I": ...,
+        "J": ...,
+        "L": ...,
+        "U": (5, 5),
+        "UH": (5, 5),
+        "V": (10, 10),
+        "VH": (10, 10),
+        "X": (1, 1),
+        "XH": (1, 1),
+        "Y": (2, 2),
+        "YH": (2, 2),
     }
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -34,26 +75,39 @@ class Chip(Base):
         index=True,
     )
     wafer: Mapped["Wafer"] = relationship(back_populates="chips")  # noqa: F821
-    name: Mapped[str] = mapped_column(VARCHAR(length=20))
-    type: Mapped[str] = mapped_column(
-        CHAR(length=1),
-        Computed("'(SUBSTR(`name`,1,1))'", persisted=False))
+    name: Mapped[str] = mapped_column(String(length=20))
+    type: Mapped[str] = mapped_column(String(length=8), default=infer_chip_type, index=True,
+                                      nullable=True)
     test_structure: Mapped[bool] = mapped_column(default=False)
     iv_conditions: Mapped[List["IvConditions"]] = relationship(back_populates="chip")  # noqa: F821
-    cv_measurements: Mapped[List["CVMeasurement"]] = relationship(back_populates="chip")  # noqa: F821
-    eqe_conditions: Mapped[List["EqeConditions"]] = relationship(back_populates="chip")  # noqa: F821
+    cv_measurements: Mapped[List["CVMeasurement"]] = relationship(  # noqa: F821
+        back_populates="chip")
+    eqe_conditions: Mapped[List["EqeConditions"]] = relationship(  # noqa: F821
+        back_populates="chip")
+
+    @validates("name")
+    def validate_name(self, key: str, name: str) -> str:
+        return name.upper()
 
     @property
     def x_coordinate(self):
         if self.test_structure:
             raise ValueError("Test structure chips do not have coordinates")
-        return int(self.name[1:3])
+        match = get_chip_name_re().match(self.name)
+        if match.group("number"):
+            return int(match.group("number")[0:2])
+        else:
+            raise ValueError(f"Could not parse chip coordinate {self.name}")
 
     @property
     def y_coordinate(self):
         if self.test_structure:
             raise ValueError("Test structure chips do not have coordinates")
-        return int(self.name[3:5])
+        match = get_chip_name_re().match(self.name)
+        if match.group("number"):
+            return int(match.group("number")[2:4])
+        else:
+            raise ValueError(f"Could not parse chip coordinate {self.name}")
 
     @property
     def area(self):

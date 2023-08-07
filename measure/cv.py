@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session, joinedload
 
 from orm import CVMeasurement, Wafer, ChipState
 from utils import (
-    validate_chip_names,
     get_or_create_wafer,
     get_or_create_chips,
     EntityOption,
@@ -16,14 +15,13 @@ from .common import set_configs, get_raw_measurements, validate_raw_measurements
 
 @click.command(name='cv', help='Measure CV data of the current chip.')
 @click.pass_context
-@click.option("-n", "--chip-name", "chip_names", help="Chip name.", callback=validate_chip_names,
-              multiple=True, default=[])
+@click.option("-n", "--chip-name", "chip_names", help="Chip name.", multiple=True)
 @click.option("-w", "--wafer", "wafer_name", prompt="Input wafer name", help="Wafer name.")
 @click.option("-s", "--chip-state", "chip_state", prompt="Input chip state",
               help="State of the chips.", cls=EntityOption, entity_type=ChipState)
 @click.option("--auto", "automatic_mode", is_flag=True,
               help="Automatic measurement mode. Invalid measurements will be skipped.")
-def cv(ctx: click.Context, chip_names: list[str], wafer_name: str, chip_state: ChipState,
+def cv(ctx: click.Context, chip_names: tuple[str], wafer_name: str, chip_state: ChipState,
        automatic_mode: bool):
     instrument: GPIBInstrument = ctx.obj["instrument"]
     session: Session = ctx.obj["session"]
@@ -36,10 +34,10 @@ def cv(ctx: click.Context, chip_names: list[str], wafer_name: str, chip_state: C
             )
         for i in range(len(configs["chips"]) - len(chip_names)):
             chip_name = click.prompt(f"Input chip name {i + 1}", type=str)
-            chip_names.extend(validate_chip_names(ctx, ..., [chip_name]))
+            chip_names += (chip_name,)
 
     wafer = get_or_create_wafer(wafer_name, session=session, query_options=joinedload(Wafer.chips))
-    chips_dict = get_or_create_chips(session, wafer, chip_names)
+    chips = get_or_create_chips(session, wafer, chip_names)
 
     for measurement_config in configs["measurements"]:
         ctx.obj["logger"].info(f'Executing measurement {measurement_config["name"]}')
@@ -58,8 +56,7 @@ def cv(ctx: click.Context, chip_names: list[str], wafer_name: str, chip_state: C
                 )
                 click.confirm("Do you want to save these measurements?", abort=True, default=True)
 
-        for chip_name, chip_config in zip(chip_names, configs["chips"], strict=True):
-            chip = chips_dict[chip_name]
+        for chip, chip_config in zip(chips, configs["chips"], strict=True):
             measurements_kwargs = dict(
                 chip_state_id=chip_state.id,
                 chip=chip,

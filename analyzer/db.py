@@ -5,8 +5,9 @@ from typing import Optional
 
 import click
 import keyring
-from sqlalchemy import create_engine, engine
+from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.engine.url import make_url
 
 from utils import get_db_url
 
@@ -49,11 +50,7 @@ def set_db(ctx: click.Context, username: Optional[str], password: Optional[str],
 @click.pass_context
 @click.option("--limit", "-l", type=int, help="Limit number of rows in each table.")
 def dump_db(ctx: click.Context, limit: Optional[int]):
-    try:
-        db_url = engine.create_engine(ctx.parent.parent.params["db_url"]).url
-    except (KeyError, AttributeError):
-        db_url = get_db_url()
-
+    db_url = make_url(find_in_ctx(ctx, "db_url") or get_db_url())
     ctx.obj["logger"].info("Saving database dump... This may take a while.")
 
     dump_file = f'dump_{time.strftime("%Y%m%d_%H%M%S")}.sql.gz'
@@ -108,3 +105,14 @@ def dump_db(ctx: click.Context, limit: Optional[int]):
 )
 def db_group():
     ...
+
+
+def find_in_ctx(ctx: click.Context, key: str):
+    if key in ctx.params:
+        return ctx.params[key]
+    elif key in ctx.obj:
+        return ctx.obj[key]
+    elif ctx.parent:
+        return find_in_ctx(ctx.parent, key)
+    else:
+        return None

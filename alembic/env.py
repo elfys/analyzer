@@ -54,10 +54,12 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    x_args = context.get_x_argument(as_dictionary=True)
+
     if "connection" in context.config.attributes:
         # pytest-alembic
         engine = context.config.attributes["connection"]
-    elif "production" in context.get_x_argument():
+    elif x_args.get("production") == "true":
         logger = logging.getLogger("alembic.runtime.migration")
         logger.warning("Running migrations in production mode.")
         click.confirm("Do you want to continue?", abort=True)
@@ -65,7 +67,7 @@ def run_migrations_online() -> None:
             args=[],
             windows_expand_args=False,
             standalone_mode=False,
-            obj={"logger": logger},
+            obj={"logger": logger, **x_args},
         )
         if not isinstance(db_url_or_error_code, URL):
             sys.exit(db_url_or_error_code)

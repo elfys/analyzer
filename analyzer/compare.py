@@ -1,4 +1,3 @@
-import asyncio
 from decimal import Decimal
 from time import strftime
 
@@ -9,7 +8,6 @@ from openpyxl.styles.numbers import FORMAT_PERCENTAGE_00
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from sqlalchemy import bindparam, select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session
 
 from orm import Wafer, Chip, ChipState, IvConditions, IVMeasurement
@@ -61,36 +59,19 @@ def compare_wafers(
         ctx.obj["logger"].warning(f"Wafers not found: {', '.join(not_found_wafers)}")
         wafer_names -= not_found_wafers
 
-    sheets_data = {
-        "yield": {"frames": [], "title": "Yield"},
-        "std": {"frames": [], "title": "Standard Deviation"},
-        "leakage": {"frames": [], "title": "Leakage"},
-        "density": {"frames": [], "title": "Density"},
-    }
-    frame_keys = []
+    sheets_data = get_sheets_data(ctx, session, wafers)
 
-    results = asyncio.run(query_frames(session, wafers))
-    for result in results:
-        if result.get("not_found", False):
-            ctx.obj["logger"].warning(f'Not found measurements for {result["wafer_name"]}')
-            continue
-
-        for key, value in result.items():
-            if key == "wafer_name":
-                frame_keys.append(value)
-            else:
-                sheets_data[key]["frames"].append(value)
-
-    if not frame_keys:
+    if not sheets_data['frame_keys']:
         ctx.obj["logger"].warning("No data to compare")
         return
 
-    save_compare_wafers_report(file_name, frame_keys, sheets_data, chip_states)
+    save_compare_wafers_report(file_name, sheets_data, chip_states)
     ctx.obj["logger"].info(f"Wafers comparison is saved to {file_name}")
 
 
-def save_compare_wafers_report(file_name, frame_keys, sheets_data, chip_states):
+def save_compare_wafers_report(file_name, sheets_data, chip_states):
     chip_states_dict = {state.id: state.name for state in chip_states}
+    frame_keys = sheets_data.pop('frame_keys')
     with pd.ExcelWriter(file_name) as writer:
         for key, data in sheets_data.items():
             df = pd.concat(data["frames"], keys=frame_keys, copy=False)
@@ -120,13 +101,8 @@ def save_compare_wafers_report(file_name, frame_keys, sheets_data, chip_states):
                     cell.number_format = number_format
 
 
-async def query_frames(session, wafers):
+def get_sheets_data(ctx: click.Context, session, wafers: list[Wafer]) -> dict[str, dict]:
     thresholds = get_thresholds(session, "IV")
-
-    engine = session.get_bind().engine
-    url = engine.url.set(drivername="mysql+asyncmy")
-    async_engine = create_async_engine(url, echo=engine.echo)
-    async_session = async_sessionmaker(async_engine)
 
     threshold_voltages = set({v for x in thresholds.values() for v in x.keys()})
     conditions_query = (
@@ -141,42 +117,34 @@ async def query_frames(session, wafers):
         .order_by(IvConditions.datetime)
     )
 
-    results = await asyncio.gather(
-        *(get_frames(async_session, conditions_query, wafer, thresholds) for wafer in wafers)
-    )
-    await async_engine.dispose(close=True)
-    return results
+    sheets_data = {
+        'yield': {'frames': [], 'title': 'Yield'},
+        'std': {'frames': [], 'title': 'Standard Deviation'},
+        'leakage': {'frames': [], 'title': 'Leakage'},
+        'density': {'frames': [], 'title': 'Density'},
+        'frame_keys': [],
+    }
 
-
-async def get_frames(async_session, query, wafer, thresholds):
-    threshold_voltages = set({v for x in thresholds.values() for v in x.keys()})
-
-    def pandas_query(session, statement):
-        return pd.read_sql_query(
-            statement,
-            session.connection(execution_options={"isolation_level": "AUTOCOMMIT"}),
+    for wafer in wafers:
+        values_frame = pd.read_sql_query(
+            conditions_query.params(wafer_id=wafer.id), session.connection()
         )
 
-    async with async_session() as oob_session:
-        values_frame = await oob_session.run_sync(pandas_query, query.params(wafer_id=wafer.id))
         if values_frame.empty:
-            return {"wafer_name": wafer.name, "not_found": True}
-        # use anode_current_corrected or fall back to anode_current
+            ctx.obj["logger"].warning(f'Not found measurements for {wafer.name}')
+            continue
+        sheets_data['frame_keys'].append(wafer.name)
+
         values_frame["value"] = values_frame["anode_current_corrected"].fillna(
             values_frame["anode_current"]
         )
-
-        def remove_cols_wo_thresholds(frame: pd.DataFrame):
-            chip_type = frame.name
-            cols_to_drop = set(frame.columns.values) - set(thresholds[chip_type].keys())
-            frame.loc[:, list(cols_to_drop)] = np.nan
-            return frame
 
         values_frame.drop_duplicates(
             subset=["voltage_input", "chip_id", "chip_state_id"],
             keep="last",
             inplace=True,
         )
+
         values_frame = values_frame.pivot_table(
             values="value",
             columns="voltage_input",
@@ -186,15 +154,20 @@ async def get_frames(async_session, query, wafer, thresholds):
             columns=lambda x: Decimal(x).quantize(next(iter(threshold_voltages))),
             inplace=True,
         )
+
+        def remove_cols_wo_thresholds(frame: pd.DataFrame):
+            chip_type = frame.name
+            cols_to_drop = set(frame.columns.values) - set(thresholds[chip_type].keys())
+            frame.loc[:, list(cols_to_drop)] = np.nan
+            return frame
         values_frame = values_frame.groupby(["chip_type"]).apply(remove_cols_wo_thresholds)
 
-        return {
-            "yield": get_yield_frame(thresholds, values_frame),
-            "std": get_std_frame(values_frame),
-            "leakage": get_leakage_frame(values_frame),
-            "density": get_density_frame(values_frame),
-            "wafer_name": wafer.name,
-        }
+        sheets_data['yield']['frames'].append(get_yield_frame(thresholds, values_frame))
+        sheets_data['std']['frames'].append(get_std_frame(values_frame))
+        sheets_data['leakage']['frames'].append(get_leakage_frame(values_frame))
+        sheets_data['density']['frames'].append(get_density_frame(values_frame))
+
+    return sheets_data
 
 
 def get_density_frame(values_frame):

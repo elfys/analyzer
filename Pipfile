@@ -25,8 +25,11 @@ sqlalchemy = "*"
 yoctopuce = "*"
 pyvisa-py = "*"
 gpib-ctypes = { sys_platform = "== 'win32'" }
+<<<<<<< HEAD
 asyncmy = "*"
 cryptography = "*"
+=======
+>>>>>>> e78b58f089383e41596f25db3f066169924ed4eb
 
 [dev-packages]
 alembic = "*"

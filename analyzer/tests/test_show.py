@@ -49,9 +49,9 @@ class TestShowWafers:
             == """\
          Name      Created at           Batch       Type    Chips
 id                                                               
-2         AB5      2022-12-06         MA0002C                  99
-3         AY8      2023-02-11        Pilotrun       AHMA        3
 1         AB4      2023-05-26           PFM2B         PD      108
+3         AY8      2023-02-11        Pilotrun       AHMA        3
+2         AB5      2022-12-06         MA0002C                  99
 """
         )
 
@@ -62,12 +62,12 @@ id
             result.output
             == """\
 {
-    "2":{
-        "name":"AB5",
-        "record_created_at":1670284800000,
-        "batch_id":"MA0002C",
-        "type":null,
-        "chips_count":99
+    "1":{
+        "name":"AB4",
+        "record_created_at":1685059200000,
+        "batch_id":"PFM2B",
+        "type":"PD",
+        "chips_count":108
     },
     "3":{
         "name":"AY8",
@@ -76,12 +76,12 @@ id
         "type":"AHMA",
         "chips_count":3
     },
-    "1":{
-        "name":"AB4",
-        "record_created_at":1685059200000,
-        "batch_id":"PFM2B",
-        "type":"PD",
-        "chips_count":108
+    "2":{
+        "name":"AB5",
+        "record_created_at":1670284800000,
+        "batch_id":"MA0002C",
+        "type":null,
+        "chips_count":99
     }
 }
 """

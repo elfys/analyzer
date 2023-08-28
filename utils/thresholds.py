@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from orm import Misc
 
 
-def get_thresholds(session: Session, kind: Literal["IV", "CV"], precision=Decimal("1e-2")):
+def get_thresholds(
+        session: Session, kind: Literal["IV", "CV"], precision=Decimal("1e-2")
+) -> dict[str, dict[Decimal, float]]:
     if kind == "IV":
         thresholds = session.execute(
             select(Misc.data).where(Misc.name == "iv_thresholds")).scalar_one()
@@ -16,7 +18,7 @@ def get_thresholds(session: Session, kind: Literal["IV", "CV"], precision=Decima
             select(Misc.data).where(Misc.name == "cv_thresholds")).scalar_one()
     else:
         raise ValueError(f"Unknown threshold kind: {kind}")
-
+    
     return {
         chip_type: {
             Decimal(voltage).quantize(precision): threshold

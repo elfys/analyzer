@@ -8,17 +8,19 @@ from orm import Misc
 
 
 def get_thresholds(
-        session: Session, kind: Literal["IV", "CV"], precision=Decimal("1e-2")
+    session: Session, kind: Literal["IV", "CV"], precision=Decimal("1e-2")
 ) -> dict[str, dict[Decimal, float]]:
     if kind == "IV":
         thresholds = session.execute(
-            select(Misc.data).where(Misc.name == "iv_thresholds")).scalar_one()
+            select(Misc.data).where(Misc.name == "iv_thresholds")
+        ).scalar_one()
     elif kind == "CV":
         thresholds = session.execute(
-            select(Misc.data).where(Misc.name == "cv_thresholds")).scalar_one()
+            select(Misc.data).where(Misc.name == "cv_thresholds")
+        ).scalar_one()
     else:
         raise ValueError(f"Unknown threshold kind: {kind}")
-    
+
     return {
         chip_type: {
             Decimal(voltage).quantize(precision): threshold

@@ -66,6 +66,15 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["summary", "--help"]
-        }        
+        },
+        {
+            "name": "Measure IV guard-ring",
+            "type": "python",
+            "request": "launch",
+            "module": "measure",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["-c", ".\\measure\\iv-guard-ring.yaml", "iv", "-w", "Test", "-s", "1", "-n", "X0101"]
+        }
     ]
 }

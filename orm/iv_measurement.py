@@ -15,6 +15,7 @@ class IVMeasurement(Base):
     anode_current: Mapped[float]
     cathode_current: Mapped[Optional[float]]
     anode_current_corrected: Mapped[Optional[float]]
+    guard_current: Mapped[Optional[float]]
 
     conditions_id: Mapped[int] = mapped_column(
         ForeignKey(

@@ -483,8 +483,7 @@ def save_cv_summary_to_excel(
 
 def get_slice_by_voltages(df: pd.DataFrame, voltages: Iterable[Decimal]) -> pd.DataFrame:
     columns = sorted(voltages)
-    slice_df = pd.DataFrame(columns=columns)
-    slice_df = pd.concat((slice_df, df[df.columns.intersection(columns)]), copy=False)
+    slice_df = df[df.columns.intersection(columns)].copy()
 
     empty_cols = slice_df.isna().all(axis=0)
     if empty_cols.any():

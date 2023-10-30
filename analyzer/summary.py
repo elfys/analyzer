@@ -127,7 +127,7 @@ def summary_iv(
         ctx.obj["logger"].warning("No measurements found.")
         return
 
-    sheets_data = get_sheets_data(conditions)
+    sheets_data = get_sheets_iv_data(conditions)
 
     voltages = sheets_data["anode"].columns.intersection(
         map(Decimal, ["-1", "0.01", "5", "6", "10", "20"])
@@ -430,7 +430,7 @@ def summary_group(ctx: click.Context):
 
 
 def save_iv_summary_to_excel(
-    sheets_data: dict,
+    sheets_data: dict[str, Union[pd.DataFrame, Any]],
     info: pd.Series,
     file_name: str,
     voltages: Iterable[Decimal],
@@ -450,8 +450,15 @@ def save_iv_summary_to_excel(
             rules,
             thresholds,
         )
-        sheets_data["anode"].rename(columns=float).to_excel(writer, sheet_name="I1 anode")
-        sheets_data["cathode"].rename(columns=float).to_excel(writer, sheet_name="I3 cathode")
+        I1_anode_df = sheets_data["anode"].dropna(axis=1, how="all").rename(columns=float)
+        if not I1_anode_df.empty:
+            I1_anode_df.to_excel(writer, sheet_name="I1 anode")
+        I3_anode_df = sheets_data["cathode"].dropna(axis=1, how="all").rename(columns=float)
+        if not I3_anode_df.empty:
+            I3_anode_df.to_excel(writer, sheet_name="I3 anode")
+        guard_ring_df = sheets_data["guard_ring"].dropna(axis=1, how="all").rename(columns=float)
+        if not guard_ring_df.empty:
+            guard_ring_df.to_excel(writer, sheet_name="Guard ring current")
         info.to_excel(writer, sheet_name="Info")
 
 
@@ -534,13 +541,14 @@ def apply_conditional_formatting(
                 sheet.conditional_formatting.add(cell_range, cells_rule)
 
 
-def get_sheets_data(
+def get_sheets_iv_data(
     conditions: list[IvConditions],
 ) -> dict[str, Union[pd.DataFrame, Any]]:
     chip_names = sorted({condition.chip.name for condition in conditions})
     chip_types = {condition.chip.type for condition in conditions}
     anode_df = pd.DataFrame(dtype="float64", index=chip_names)
     cathode_df = pd.DataFrame(dtype="float64", index=chip_names)
+    guard_ring_df = pd.DataFrame(dtype="float64", index=chip_names)
     has_uncorrected_current = False
     with click.progressbar(conditions, label="Processing measurements...") as progress:
         for condition in progress:
@@ -551,6 +559,7 @@ def get_sheets_data(
                     has_uncorrected_current = True
                 anode_df.loc[cell_location] = measurement.get_anode_current_value()
                 cathode_df.loc[cell_location] = measurement.cathode_current
+                guard_ring_df.loc[cell_location] = measurement.guard_current
     if has_uncorrected_current:
         click.get_current_context().obj["logger"].warning(
             "Some current measurements are not corrected by temperature."
@@ -558,6 +567,7 @@ def get_sheets_data(
     return {
         "anode": anode_df,
         "cathode": cathode_df,
+        "guard_ring": guard_ring_df,
         "chip_names": chip_names,
         "chip_types": chip_types,
     }
@@ -641,7 +651,7 @@ def get_sheets_eqe_data(conditions: list[EqeConditions]) -> list[dict]:
             )
             series_list.append(series)
         df = pd.concat(series_list, axis=1, ignore_index=True).T
-        if df.dropna().empty:
+        if df.dropna(axis=1, how="all").empty:
             continue
         df.set_index("Datetime", inplace=True)
         df = df.sort_index()

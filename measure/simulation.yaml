@@ -26,6 +26,8 @@ devices:
         r: "1.0,2.0,3.0,4.0"
       - q: "printbuffer(1, smua.nvbuffer1.n, smua.nvbuffer1.sourcevalues)"
         r: "-0.01,-10,-20,1"
+      - q: "printbuffer(1, smub.nvbuffer2.n, smub.nvbuffer2.readings)"
+        r: "0.001,0.0015,-0.00015,-1"
       - q: ":MEM:READ? DBUF"
         r: "1.0,0.0,0.0,0.0,2.0,0.0,0.0,0.0,3.0,0.0,0.0,0.0,4.0,0.0,0.0,0.0"
       - q: ":LIST:BIAS:VOLT?"

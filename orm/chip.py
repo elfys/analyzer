@@ -18,7 +18,8 @@ from .base import Base
 @functools.lru_cache()
 def get_chip_name_re() -> re.Pattern:
     known_chip_types = Chip.chip_sizes.keys()
-    pattern = fr"^(?P<type>[{''.join(known_chip_types)}]H?)(?P<number>\d{{4}})"
+    postfix_re = r"(H|M)?"
+    pattern = fr"^(?P<type>[{''.join(known_chip_types)}]{postfix_re})(?P<number>\d{{4}})"
     return re.compile(pattern, re.IGNORECASE)
 
 
@@ -38,8 +39,6 @@ def validate_chip_name(name: str) -> str:
     match = get_chip_name_re().match(name.upper())
     if not match:
         raise click.BadParameter(f'{name} is not valid chip name.')
-    if match.group("high_resistivity"):
-        return f"{match.group('type')}h{match.group('number')}"
 
     return f"{match.group('type')}{match.group('number')}"
 

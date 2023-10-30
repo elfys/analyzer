@@ -43,5 +43,8 @@ jobs:
           pylint --rcfile=.pylintrc --ignore=tests analyzer measure
           pylint --rcfile=tests.pylintrc analyzer/tests measure/tests
 
-      - name: Run pytest unit tests
-        run: pytest
+      - name: Run analyzer unit tests
+        run: timeout 2m pytest ./analyzer || exit 1
+
+      - name: Run measure unit tests
+        run: timeout 1m pytest ./measure || exit 1

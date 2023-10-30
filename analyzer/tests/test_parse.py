@@ -3,11 +3,12 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-from sqlalchemy import desc
+from sqlalchemy import desc, text
+from sqlalchemy.orm import Session
 
 from analyzer import analyzer
 from analyzer.parse import parse_group, parse_cv, parse_iv, parse_eqe, parse_ts
-from orm import CVMeasurement, EqeConditions, TsConditions, TsMeasurement, Wafer
+from orm import CVMeasurement, EqeConditions, TsConditions, TsMeasurement, Wafer, Chip
 
 
 def should_parse_files(file_items: list[tuple[str, str]]):
@@ -22,6 +23,15 @@ def should_not_parse_file(file_items: list[tuple[str, str]]):
         assert Path(file_path).exists() is True
         assert Path(file_path).read_bytes() == content
         assert Path(f"{file_path}.parsed").exists() is False
+
+
+@pytest.fixture(autouse=True, scope="class")
+def reset_db(session: Session):
+    session.query(Chip).delete()
+    session.query(Wafer).delete()
+    session.execute(text("ALTER TABLE wafer AUTO_INCREMENT = 1"))  # reset id generator
+    session.commit()
+    yield
 
 
 class TestParseGroup:

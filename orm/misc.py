@@ -5,7 +5,7 @@ from orm import Base
 
 
 class Misc(Base):
-    __tablename__ = 'misc'
+    __tablename__ = "misc"
 
     name: Mapped[str] = mapped_column(VARCHAR(100), primary_key=True)
     data: Mapped[dict] = mapped_column(JSON)

@@ -37,7 +37,9 @@ class EqeConditions(Base):
         index=True,
     )
     chip_state: Mapped["ChipState"] = relationship()  # noqa: F821
-    measurements: Mapped[list["EqeMeasurement"]] = relationship(back_populates="conditions")  # noqa: F821
+    measurements: Mapped[list["EqeMeasurement"]] = relationship(  # noqa: F821
+        back_populates="conditions"
+    )
     datetime: Mapped[datetime] = mapped_column(DateTime(), server_default=func.current_timestamp())
     bias: Mapped[float]
     averaging: Mapped[int]

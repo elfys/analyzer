@@ -4,7 +4,8 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     SmallInteger,
-    VARCHAR, DateTime,
+    VARCHAR,
+    DateTime,
 )
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 
@@ -35,7 +36,9 @@ class TsConditions(Base):
         index=True,
     )
     chip: Mapped["Chip"] = relationship()  # noqa: F821
-    measurements: Mapped[list["TsMeasurement"]] = relationship(back_populates="conditions")  # noqa: F821
+    measurements: Mapped[list["TsMeasurement"]] = relationship(  # noqa: F821
+        back_populates="conditions"
+    )
     structure_type: Mapped[str] = mapped_column(VARCHAR(length=10))
     ts_step: Mapped[int] = mapped_column(SmallInteger)
     ts_number: Mapped[int] = mapped_column(SmallInteger)

@@ -270,12 +270,12 @@ def parse_eqe_dat_file(file_path: Path) -> dict:
         match = re.compile(pattern, re.MULTILINE).search(contents)
         if match:
             conditions[prop] = factory(match.group(1))
-            contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1:]
+            contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1 :]
 
     table_matcher = re.compile(r"MEASUREMENT DATA STARTS\s*(?P<table>[\s\S]*)", re.M | re.I)
     match = table_matcher.search(contents)
     data = pd.read_csv(StringIO(match.group("table")), sep="\t").replace(float("nan"), None)
-    contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1:]
+    contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1 :]
     conditions["comment"] = contents
     return {"conditions": conditions, "data": data}
 
@@ -339,7 +339,7 @@ def create_iv_measurements(data: pd.DataFrame) -> list[IVMeasurement]:
 
 
 def create_cv_measurements(
-        data: pd.DataFrame, timestamp: datetime, chip: Chip, chip_state: ChipState
+    data: pd.DataFrame, timestamp: datetime, chip: Chip, chip_state: ChipState
 ) -> Generator[CVMeasurement, None, None]:
     for idx, row in data.iterrows():
         yield CVMeasurement(
@@ -352,7 +352,7 @@ def create_cv_measurements(
 
 
 def create_eqe_measurements(
-        data: pd.DataFrame,
+    data: pd.DataFrame,
 ) -> Generator[EqeMeasurement, None, None]:
     header_to_prop_map = {
         "Wavelength (nm)": "wavelength",
@@ -383,11 +383,11 @@ def create_ts_measurements(data: pd.DataFrame) -> list[TsMeasurement]:
 
 
 def create_eqe_conditions(
-        raw_data: dict,
-        instrument_map: dict[str, Instrument],
-        file_path: Path,
-        session: Session,
-        chip: Chip,
+    raw_data: dict,
+    instrument_map: dict[str, Instrument],
+    file_path: Path,
+    session: Session,
+    chip: Chip,
 ) -> EqeConditions:
     existing = session.query(EqeConditions).filter_by(datetime=raw_data["datetime"]).all()
     if existing:
@@ -405,9 +405,11 @@ def create_eqe_conditions(
         instrument = select_one(list(instrument_map.values()), "Select instrument")
 
     user_comment = click.prompt("Add comments for measurements", default="", show_default=False)
-    comment = f"Parsing comment: {user_comment}\n"\
-              f"Parsed file: {file_path.name}\n"\
-              f"{raw_data.get('comment', '')}"
+    comment = (
+        f"Parsing comment: {user_comment}\n"
+        f"Parsed file: {file_path.name}\n"
+        f"{raw_data.get('comment', '')}"
+    )
 
     conditions_data = {
         **raw_data,

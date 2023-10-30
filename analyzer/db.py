@@ -17,7 +17,9 @@ from utils import get_db_url
 @click.option("--password", "-p", help="Database password.")
 @click.option("--host", "-h", help="Database host.")
 @click.pass_context
-def set_db(ctx: click.Context, username: Optional[str], password: Optional[str], host: Optional[str]):
+def set_db(
+    ctx: click.Context, username: Optional[str], password: Optional[str], host: Optional[str]
+):
     if username:
         keyring.set_password("ELFYS_DB", "USER", username)
     if password:

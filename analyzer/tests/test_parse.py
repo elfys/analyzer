@@ -226,7 +226,9 @@ class TestParseEQE:
         should_parse_files(file_items)
 
         new_conditions = session.query(EqeConditions).order_by(desc(EqeConditions.id)).first()
-        assert (new_conditions.comment == """Parsing comment: My comments
+        assert (
+            new_conditions.comment
+            == """Parsing comment: My comments
 Parsed file: labview_filename.dat
 Delay after wl change (ms): 	200
 Delay between current readings (ms): 	200
@@ -248,7 +250,8 @@ Defined Sweep Size U8X: DSS0000 DSS0000
 Warning Status Word U9X: WRS0000000000 WRS0000000000
 First Sweep Point in Compliance U10X:  
 Sweep Measure Size U11X: SMS0000 SMS0000
-""")  # noqa: W291
+"""
+        )  # noqa: W291
         assert len(new_conditions.measurements) == 7
 
 

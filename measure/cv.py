@@ -13,16 +13,32 @@ from utils import (
 from .common import set_configs, get_raw_measurements, validate_raw_measurements
 
 
-@click.command(name='cv', help='Measure CV data of the current chip.')
+@click.command(name="cv", help="Measure CV data of the current chip.")
 @click.pass_context
 @click.option("-n", "--chip-name", "chip_names", help="Chip name.", multiple=True)
 @click.option("-w", "--wafer", "wafer_name", prompt="Input wafer name", help="Wafer name.")
-@click.option("-s", "--chip-state", "chip_state", prompt="Input chip state",
-              help="State of the chips.", cls=EntityOption, entity_type=ChipState)
-@click.option("--auto", "automatic_mode", is_flag=True,
-              help="Automatic measurement mode. Invalid measurements will be skipped.")
-def cv(ctx: click.Context, chip_names: tuple[str], wafer_name: str, chip_state: ChipState,
-       automatic_mode: bool):
+@click.option(
+    "-s",
+    "--chip-state",
+    "chip_state",
+    prompt="Input chip state",
+    help="State of the chips.",
+    cls=EntityOption,
+    entity_type=ChipState,
+)
+@click.option(
+    "--auto",
+    "automatic_mode",
+    is_flag=True,
+    help="Automatic measurement mode. Invalid measurements will be skipped.",
+)
+def cv(
+    ctx: click.Context,
+    chip_names: tuple[str],
+    wafer_name: str,
+    chip_state: ChipState,
+    automatic_mode: bool,
+):
     instrument: GPIBInstrument = ctx.obj["instrument"]
     session: Session = ctx.obj["session"]
     configs: dict = ctx.obj["configs"]

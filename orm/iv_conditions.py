@@ -36,7 +36,9 @@ class IvConditions(Base):
         index=True,
     )
     chip_state: Mapped["ChipState"] = relationship()  # noqa: F821
-    measurements: Mapped[list["IVMeasurement"]] = relationship(back_populates="conditions")  # noqa: F821
+    measurements: Mapped[list["IVMeasurement"]] = relationship(  # noqa: F821
+        back_populates="conditions"
+    )
     datetime: Mapped[datetime] = mapped_column(
         DATETIME,
         server_default=func.current_timestamp(),

@@ -7,10 +7,10 @@ from orm import Wafer, Chip
 
 
 def get_or_create_wafer(
-        wafer_name: Optional[str] = None,
-        default: Optional[str] = None,
-        session: Session = None,
-        query_options: Load = None,
+    wafer_name: Optional[str] = None,
+    default: Optional[str] = None,
+    session: Session = None,
+    query_options: Load = None,
 ) -> Wafer:
     if wafer_name is None:
         wafer_name = click.prompt(

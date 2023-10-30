@@ -92,7 +92,7 @@ def apply_migrations(alembic_config, alembic_engine):
         # test_up_down_consistency(runner)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
 def session(alembic_engine):
     with alembic_engine.connect():
         session = Session(bind=alembic_engine, autoflush=False, autocommit=False, future=True)

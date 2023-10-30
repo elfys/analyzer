@@ -61,7 +61,7 @@ def compare_wafers(
 
     sheets_data = get_sheets_data(ctx, session, wafers)
 
-    if not sheets_data['frame_keys']:
+    if not sheets_data["frame_keys"]:
         ctx.obj["logger"].warning("No data to compare")
         return
 
@@ -71,7 +71,7 @@ def compare_wafers(
 
 def save_compare_wafers_report(file_name, sheets_data, chip_states):
     chip_states_dict = {state.id: state.name for state in chip_states}
-    frame_keys = sheets_data.pop('frame_keys')
+    frame_keys = sheets_data.pop("frame_keys")
     with pd.ExcelWriter(file_name) as writer:
         for key, data in sheets_data.items():
             df = pd.concat(data["frames"], keys=frame_keys, copy=False)
@@ -118,11 +118,11 @@ def get_sheets_data(ctx: click.Context, session, wafers: list[Wafer]) -> dict[st
     )
 
     sheets_data = {
-        'yield': {'frames': [], 'title': 'Yield'},
-        'std': {'frames': [], 'title': 'Standard Deviation'},
-        'leakage': {'frames': [], 'title': 'Leakage'},
-        'density': {'frames': [], 'title': 'Density'},
-        'frame_keys': [],
+        "yield": {"frames": [], "title": "Yield"},
+        "std": {"frames": [], "title": "Standard Deviation"},
+        "leakage": {"frames": [], "title": "Leakage"},
+        "density": {"frames": [], "title": "Density"},
+        "frame_keys": [],
     }
 
     for wafer in wafers:
@@ -131,9 +131,9 @@ def get_sheets_data(ctx: click.Context, session, wafers: list[Wafer]) -> dict[st
         )
 
         if values_frame.empty:
-            ctx.obj["logger"].warning(f'Not found measurements for {wafer.name}')
+            ctx.obj["logger"].warning(f"Not found measurements for {wafer.name}")
             continue
-        sheets_data['frame_keys'].append(wafer.name)
+        sheets_data["frame_keys"].append(wafer.name)
 
         values_frame["value"] = values_frame["anode_current_corrected"].fillna(
             values_frame["anode_current"]
@@ -160,12 +160,13 @@ def get_sheets_data(ctx: click.Context, session, wafers: list[Wafer]) -> dict[st
             cols_to_drop = set(frame.columns.values) - set(thresholds[chip_type].keys())
             frame.loc[:, list(cols_to_drop)] = np.nan
             return frame
+
         values_frame = values_frame.groupby(["chip_type"]).apply(remove_cols_wo_thresholds)
 
-        sheets_data['yield']['frames'].append(get_yield_frame(thresholds, values_frame))
-        sheets_data['std']['frames'].append(get_std_frame(values_frame))
-        sheets_data['leakage']['frames'].append(get_leakage_frame(values_frame))
-        sheets_data['density']['frames'].append(get_density_frame(values_frame))
+        sheets_data["yield"]["frames"].append(get_yield_frame(thresholds, values_frame))
+        sheets_data["std"]["frames"].append(get_std_frame(values_frame))
+        sheets_data["leakage"]["frames"].append(get_leakage_frame(values_frame))
+        sheets_data["density"]["frames"].append(get_density_frame(values_frame))
 
     return sheets_data
 
@@ -188,7 +189,8 @@ def get_density_frame(values_frame):
 def get_yield_frame(thresholds, values_frame) -> pd.DataFrame:
     row_thresholds = {
         chip_type: np.array(
-            [chip_type_thresholds.get(column, np.nan) for column in values_frame.columns])
+            [chip_type_thresholds.get(column, np.nan) for column in values_frame.columns]
+        )
         for chip_type, chip_type_thresholds in thresholds.items()
     }
 

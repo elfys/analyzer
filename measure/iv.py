@@ -26,15 +26,31 @@ from .common import (
 @click.pass_context
 @click.option("-n", "--chip-name", "chip_names", help="Chip name.", multiple=True)
 @click.option("-w", "--wafer", "wafer_name", prompt="Input wafer name", help="Wafer name.")
-@click.option("-s", "--chip-state", "chip_state", prompt="Input chip state",
-              help="State of the chips.", cls=EntityOption, entity_type=ChipState)
-@click.option("--auto", "automatic_mode", is_flag=True,
-              help="Automatic measurement mode. Invalid measurements will be skipped.")
-def measure_iv(ctx: click.Context, chip_names: tuple[str], wafer_name: str, chip_state: ChipState,
-               automatic_mode: bool):
-    instrument: GPIBInstrument = ctx.obj['instrument']
-    session: Session = ctx.obj['session']
-    configs: dict = ctx.obj['configs']
+@click.option(
+    "-s",
+    "--chip-state",
+    "chip_state",
+    prompt="Input chip state",
+    help="State of the chips.",
+    cls=EntityOption,
+    entity_type=ChipState,
+)
+@click.option(
+    "--auto",
+    "automatic_mode",
+    is_flag=True,
+    help="Automatic measurement mode. Invalid measurements will be skipped.",
+)
+def measure_iv(
+    ctx: click.Context,
+    chip_names: tuple[str],
+    wafer_name: str,
+    chip_state: ChipState,
+    automatic_mode: bool,
+):
+    instrument: GPIBInstrument = ctx.obj["instrument"]
+    session: Session = ctx.obj["session"]
+    configs: dict = ctx.obj["configs"]
 
     if ctx.obj["simulate"]:
         temperature = random() * 10 + 20
@@ -174,14 +190,17 @@ def validate_temperature(temperature, ctx: click.Context):
         return True
 
     if temperature < 0:
-        ctx.obj['logger'].error(
-            f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!")
+        ctx.obj["logger"].error(
+            f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!"
+        )
         raise click.Abort(
-            f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!")
+            f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!"
+        )
 
-    ctx.obj['logger'].warning(
-        f"Current temperature is too {'low' if temperature < 18 else 'high'}. temp: {temperature:.2f}")
-    if not ctx.params['automatic_mode']:
-        confirm = click.confirm('Do you want to continue?')
+    ctx.obj["logger"].warning(
+        f"Current temperature is too {'low' if temperature < 18 else 'high'}. temp: {temperature:.2f}"
+    )
+    if not ctx.params["automatic_mode"]:
+        confirm = click.confirm("Do you want to continue?")
         if not confirm:
             raise click.Abort()

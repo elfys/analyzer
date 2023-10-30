@@ -39,9 +39,7 @@ class EntityOption(click.Option):
                 return options
             return [o for o in options if str(o.id) in value]
         else:
-            options_dict = {
-                str(o.id): o for o in options
-            }
+            options_dict = {str(o.id): o for o in options}
             return options_dict[value]
 
     def get_options(self, ctx: Context):

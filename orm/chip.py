@@ -19,7 +19,7 @@ from .base import Base
 def get_chip_name_re() -> re.Pattern:
     known_chip_types = Chip.chip_sizes.keys()
     postfix_re = r"(H|M)?"
-    pattern = fr"^(?P<type>[{''.join(known_chip_types)}]{postfix_re})(?P<number>\d{{4}})"
+    pattern = rf"^(?P<type>[{''.join(known_chip_types)}]{postfix_re})(?P<number>\d{{4}})"
     return re.compile(pattern, re.IGNORECASE)
 
 
@@ -38,7 +38,7 @@ def infer_chip_type(ctx: ExecutionContext) -> Union[str, None]:
 def validate_chip_name(name: str) -> str:
     match = get_chip_name_re().match(name.upper())
     if not match:
-        raise click.BadParameter(f'{name} is not valid chip name.')
+        raise click.BadParameter(f"{name} is not valid chip name.")
 
     return f"{match.group('type')}{match.group('number')}"
 
@@ -75,14 +75,17 @@ class Chip(Base):
     )
     wafer: Mapped["Wafer"] = relationship(back_populates="chips")  # noqa: F821
     name: Mapped[str] = mapped_column(String(length=20))
-    type: Mapped[str] = mapped_column(String(length=8), default=infer_chip_type, index=True,
-                                      nullable=True)
+    type: Mapped[str] = mapped_column(
+        String(length=8), default=infer_chip_type, index=True, nullable=True
+    )
     test_structure: Mapped[bool] = mapped_column(default=False)
     iv_conditions: Mapped[List["IvConditions"]] = relationship(back_populates="chip")  # noqa: F821
     cv_measurements: Mapped[List["CVMeasurement"]] = relationship(  # noqa: F821
-        back_populates="chip")
+        back_populates="chip"
+    )
     eqe_conditions: Mapped[List["EqeConditions"]] = relationship(  # noqa: F821
-        back_populates="chip")
+        back_populates="chip"
+    )
 
     @validates("name")
     def validate_name(self, key: str, name: str) -> str:

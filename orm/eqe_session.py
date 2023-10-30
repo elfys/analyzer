@@ -11,7 +11,9 @@ class EqeSession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime.date] = mapped_column(server_default=text("(CURRENT_DATE)"))
-    eqe_conditions: Mapped[list["EqeConditions"]] = relationship(back_populates="session")  # noqa: F821
+    eqe_conditions: Mapped[list["EqeConditions"]] = relationship(  # noqa: F821
+        back_populates="session"
+    )
 
     def __repr__(self):
         return f"<EqeSession(id={self.id}, date={self.date})>"

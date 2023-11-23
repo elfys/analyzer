@@ -3,6 +3,7 @@
 instruments:
   pyvisa:
     resource: "GPIB0::17::INSTR"
+    name: "Keithley SMU E4980 (Innopoli)"
     kwargs:
       timeout: 15000
 

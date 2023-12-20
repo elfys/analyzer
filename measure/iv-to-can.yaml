@@ -42,7 +42,7 @@ chips:
     cathode_current: cathode_current
 
 measurements:
-  - name: 0.01v
+  - name: 0.01v sweep
     instrument:
       - "*CLS" # clears the Error Queue
       - "*RST" # performs an instrument reset
@@ -94,7 +94,7 @@ measurements:
       measurements_kwargs:
         int_time: SHORT
 
-  - name: 20v
+  - name: 20v sweep
     instrument:
       - "*CLS" # clears the Error Queue
       - "*RST" # performs an instrument reset

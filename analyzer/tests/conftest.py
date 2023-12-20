@@ -24,7 +24,7 @@ def set_keyring():
         if name == "PASSWORD":
             return "pwd"
         if name == "HOST":
-            return "127.0.0.1"
+            return "nn-vm"
         raise ValueError(f"Unexpected name: {name}")
 
     keyring.get_password = get_password
@@ -44,7 +44,7 @@ def pytest_configure(config):
 
 @pytest.fixture(scope="session")
 def db_url():
-    return "mysql://root:pwd@127.0.0.1:3306/test"
+    return "mysql://root:pwd@nn-vm:3306/test"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -78,7 +78,9 @@ def alembic_config(db_url):
 @pytest.fixture(scope="session")
 def alembic_engine(setup_db, db_url, alembic_config):
     """Override this fixture to provide pytest-alembic powered tests with a database handle."""
-    yield create_engine(db_url)
+    engine = create_engine(db_url, pool_size=2, max_overflow=0, pool_timeout=5, pool_pre_ping=True)
+    yield engine
+    engine.dispose(close=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -92,13 +94,14 @@ def apply_migrations(alembic_config, alembic_engine):
         # test_up_down_consistency(runner)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def session(alembic_engine):
     with alembic_engine.connect():
         session = Session(bind=alembic_engine, autoflush=False, autocommit=False, future=True)
         session.begin()
         yield session
         session.rollback()
+        session.close()
 
 
 @pytest.fixture(scope="session")

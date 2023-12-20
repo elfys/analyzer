@@ -38,7 +38,7 @@ chips:
 
 
 measurements:
-  - name: 0.01v
+  - name: 0.01v points
     instrument:
       - "reset()" # resets commands to their default settings
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function
@@ -93,7 +93,7 @@ measurements:
       measurements_kwargs:
         int_time: LONG # depends on smua.measure.nplc value. 0.01 - fast (SHORT), 0.1 - med (MED), 1 - normal (LONG)
 
-  - name: 20v
+  - name: 10v points
     instrument:
       - "reset()" # resets commands to their default settings
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function

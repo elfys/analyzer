@@ -37,7 +37,7 @@ class TestShowWafers:
         session.commit()
         yield
 
-    def test_invoke_from_root_group(self, runner, session):
+    def test_invoke_from_root_group(self, runner):
         result = runner.invoke(analyzer, ["show", "wafers"])
         assert result.exit_code == 0
 

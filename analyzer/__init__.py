@@ -39,7 +39,7 @@ LOGO = """
     show_default=True,
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
 )
-@click.option("--db-url", help="Database URL.")
+@click.option("--db-url", help="Database URL.", default=os.environ.get('DB_URL', None))
 def analyzer(ctx: click.Context, log_level: str, db_url: Union[str, None]):
     ctx.obj = ctx.obj or {}
     if "logger" in ctx.obj:

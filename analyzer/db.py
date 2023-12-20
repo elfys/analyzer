@@ -55,9 +55,8 @@ def dump_db(ctx: click.Context, limit: Optional[int]):
     db_url = make_url(find_in_ctx(ctx, "db_url") or get_db_url())
     ctx.obj["logger"].info("Saving database dump... This may take a while.")
 
-    dump_file = f'dump_{time.strftime("%Y%m%d_%H%M%S")}.sql.gz'
-    command = f"docker run --rm -i mysql:latest \
-        mysqldump --no-tablespaces --host={db_url.host} --port={db_url.port} \
+    dump_file = f'./dumps/dump_{time.strftime("%Y%m%d_%H%M%S")}.sql.gz'
+    command = f"mysqldump --no-tablespaces --host={db_url.host} --port={db_url.port} \
         --user={db_url.username} -p {db_url.database}"
     if limit:
         command = f'{command} --where="1 limit {limit}"'

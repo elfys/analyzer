@@ -4,8 +4,6 @@ from click.testing import CliRunner, Result
 from measure import measure_group
 from orm import Chip, Wafer, IvConditions
 
-config_files = ["iv-innopoli.yaml", "iv-micronova.yaml"]
-
 
 class TestMeasureIVAutomatic:
     chip_name = "X0506"

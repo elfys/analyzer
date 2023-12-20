@@ -127,7 +127,19 @@ def summary_iv(
         ctx.obj["logger"].warning("No measurements found.")
         return
 
-    sheets_data = get_sheets_iv_data(conditions)
+    # sort conditions by amplitude of voltage, smaller go last
+    # thus more precise measurements from -0.01 to 0.01 will overwrite less precise from -1 to 20
+    conditions = sorted(
+        conditions,
+        key=lambda c: abs(c.measurements[0].voltage_input - c.measurements[-1].voltage_input),
+        reverse=True)
+    # get all measurements, deduplicated by voltage and chip name
+    measurements = {
+        (m.voltage_input, c.chip.name): m for c in conditions for m in c.measurements
+    }.values()
+
+    
+    sheets_data = get_sheets_iv_data(measurements)
 
     voltages = sheets_data["anode"].columns.intersection(
         map(Decimal, ["-1", "0.01", "5", "6", "10", "20"])
@@ -150,7 +162,7 @@ def summary_iv(
     else:
         chips_type = next(iter(chips_types))
         fig, axes = plot_data(
-            tuple(chain(*(condition.measurements for condition in conditions))),
+            measurements,
             voltages,
             quantile,
             thresholds.get(chips_type, {}),
@@ -446,7 +458,6 @@ def save_iv_summary_to_excel(
         summary_df.rename(columns=float).to_excel(writer, sheet_name="Summary")
         apply_conditional_formatting(
             writer.book["Summary"],
-            sheets_data["chip_types"],
             rules,
             thresholds,
         )
@@ -479,7 +490,6 @@ def save_cv_summary_to_excel(
         summary_df.to_excel(writer, sheet_name="Summary")
         apply_conditional_formatting(
             writer.book["Summary"],
-            sheets_data["chip_types"],
             rules,
             thresholds,
         )
@@ -504,20 +514,15 @@ def get_slice_by_voltages(df: pd.DataFrame, voltages: Iterable[Decimal]) -> pd.D
 
 def apply_conditional_formatting(
     sheet: Worksheet,
-    chip_types: list[str],
     rules: dict[str, Fill],
     thresholds: dict[str, dict[Decimal, float]],
 ):
     chip_row_index = [(i + 1, cell.value) for i, cell in enumerate(sheet["A"]) if cell.value]
 
-    for chip_type in chip_types:
-
+    for chip_type, chip_type_thresholds in thresholds.items():
         def is_current_type(chip_name: str) -> bool:
             return chip_name.startswith(chip_type)
 
-        chip_type_thresholds = thresholds.get(chip_type)
-        if chip_type_thresholds is None:
-            continue
         for voltage, threshold in chip_type_thresholds.items():
             try:
                 column_cell = next(
@@ -529,9 +534,7 @@ def apply_conditional_formatting(
                 )
                 first_row_index = next(i for i, v in chip_row_index if is_current_type(v))
                 last_row_index = next(i for i, v in reversed(chip_row_index) if is_current_type(v))
-            except ValueError:
-                continue
-            except StopIteration:
+            except (ValueError, StopIteration):
                 continue
 
             column_letter = column_cell.column_letter
@@ -542,24 +545,21 @@ def apply_conditional_formatting(
 
 
 def get_sheets_iv_data(
-    conditions: list[IvConditions],
+    measurements: Iterable[IVMeasurement],
 ) -> dict[str, Union[pd.DataFrame, Any]]:
-    chip_names = sorted({condition.chip.name for condition in conditions})
-    chip_types = {condition.chip.type for condition in conditions}
-    anode_df = pd.DataFrame(dtype="float64", index=chip_names)
-    cathode_df = pd.DataFrame(dtype="float64", index=chip_names)
-    guard_ring_df = pd.DataFrame(dtype="float64", index=chip_names)
+    anode_df = pd.DataFrame(dtype="float64")
+    cathode_df = pd.DataFrame(dtype="float64")
+    guard_ring_df = pd.DataFrame(dtype="float64")
     has_uncorrected_current = False
-    with click.progressbar(conditions, label="Processing measurements...") as progress:
-        for condition in progress:
-            for measurement in condition.measurements:
-                measurement: IVMeasurement
-                cell_location = (condition.chip.name, measurement.voltage_input)
-                if measurement.anode_current_corrected is None:
-                    has_uncorrected_current = True
-                anode_df.loc[cell_location] = measurement.get_anode_current_value()
-                cathode_df.loc[cell_location] = measurement.cathode_current
-                guard_ring_df.loc[cell_location] = measurement.guard_current
+    with click.progressbar(measurements, label="Processing measurements...") as progress:
+        for measurement in progress:
+            measurement: IVMeasurement
+            cell_location = (measurement.conditions.chip.name, measurement.voltage_input)
+            if measurement.anode_current_corrected is None:
+                has_uncorrected_current = True
+            anode_df.loc[cell_location] = measurement.get_anode_current_value()
+            cathode_df.loc[cell_location] = measurement.cathode_current
+            guard_ring_df.loc[cell_location] = measurement.guard_current
     if has_uncorrected_current:
         click.get_current_context().obj["logger"].warning(
             "Some current measurements are not corrected by temperature."
@@ -568,8 +568,6 @@ def get_sheets_iv_data(
         "anode": anode_df,
         "cathode": cathode_df,
         "guard_ring": guard_ring_df,
-        "chip_names": chip_names,
-        "chip_types": chip_types,
     }
 
 
@@ -577,7 +575,6 @@ def get_sheets_cv_data(
     measurements: list[CVMeasurement],
 ) -> dict[str, Union[pd.DataFrame, Any]]:
     chip_names = sorted({measurement.chip.name for measurement in measurements})
-    chip_types = {measurement.chip.type for measurement in measurements}
     voltages = sorted({measurement.voltage_input for measurement in measurements})
     capacitance_df = pd.DataFrame(dtype="float64", index=chip_names, columns=voltages)
     with click.progressbar(measurements, label="Processing measurements...") as progress:
@@ -588,7 +585,6 @@ def get_sheets_cv_data(
     return {
         "capacitance": capacitance_df,
         "chip_names": chip_names,
-        "chip_types": chip_types,
         "voltages": voltages,
     }
 
@@ -730,7 +726,9 @@ def plot_data(
     quantile: tuple[float, float],
     thresholds: dict[Decimal, float],
 ) -> (Figure, ndarray[Any, Axes]):
+    # enable failure map mode if quantile is [0, 0] (red/green based on thresholds)
     failure_map = np.isclose(quantile, [0, 0], atol=1e-5).all()
+    
     cols_num = 1 if failure_map else 2
     fig, axes = plt.subplots(
         nrows=len(voltages),

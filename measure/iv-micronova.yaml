@@ -36,7 +36,7 @@ measurements:
     instrument:
       - "*CLS" # clears the Error Queue
       - "*RST" # performs an instrument reset
-        # sets the voltage output MODE
+      # sets the voltage output MODE
       - ":PAGE:CHAN:SMU1:MODE V"
       - ":PAGE:CHAN:SMU2:MODE V"
       - ":PAGE:CHAN:SMU3:MODE V"

@@ -1,9 +1,18 @@
-from typing import Optional, Sequence
+from typing import (
+    Optional,
+    Sequence,
+)
 
 import click
-from sqlalchemy.orm import Session, Load
+from sqlalchemy.orm import (
+    Load,
+    Session,
+)
 
-from orm import Wafer, Chip
+from orm import (
+    Chip,
+    Wafer,
+)
 
 
 def get_or_create_wafer(
@@ -23,11 +32,11 @@ def get_or_create_wafer(
             raise click.Abort()
         if wafer_name == "EXIT":
             click.get_current_context().exit(0)
-
+    
     query = session.query(Wafer).filter(Wafer.name == wafer_name)
     if query_options is not None:
         query = query.options(query_options)
-
+    
     wafer = query.one_or_none()
     if wafer is None:
         click.confirm(
@@ -37,7 +46,7 @@ def get_or_create_wafer(
         )
         wafer = Wafer(name=wafer_name)
         session.add(wafer)
-
+    
     return wafer
 
 
@@ -52,5 +61,5 @@ def get_or_create_chips(session: Session, wafer: Wafer, chip_names: Sequence[str
             session.add(chip)
         else:
             result.append(existing_chips_dict[chip_name.upper()])
-
+    
     return result

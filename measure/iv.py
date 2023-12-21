@@ -6,13 +6,27 @@ import numpy as np
 from pyvisa.resources import GPIBInstrument
 from scipy.optimize import curve_fit
 from sqlalchemy.orm import Session
-from yoctopuce.yocto_temperature import YAPI, YRefParam, YTemperature
+from yoctopuce.yocto_temperature import (
+    YAPI,
+    YRefParam,
+    YTemperature,
+)
 
-from orm import ChipState, IVMeasurement, Instrument, IvConditions
+from orm import (
+    ChipState,
+    IVMeasurement,
+    Instrument,
+    IvConditions,
+)
 from utils import (
     EntityOption,
 )
-from .common import (get_chips_for_names, get_raw_measurements, set_configs, validate_measurements)
+from .common import (
+    get_chips_for_names,
+    get_raw_measurements,
+    set_configs,
+    validate_measurements,
+)
 
 
 @click.command(name="iv", help="Measure IV data of the current chip.")
@@ -44,7 +58,7 @@ def measure_iv(
     instrument: GPIBInstrument = ctx.obj["instrument"]
     session: Session = ctx.obj["session"]
     configs: dict = ctx.obj["configs"]
-
+    
     if ctx.obj["simulate"]:
         temperature = random() * 10 + 20
     else:
@@ -55,20 +69,20 @@ def measure_iv(
         .filter(Instrument.name == configs["instruments"]["pyvisa"]["name"])
         .scalar()
     )
-
+    
     chips = get_chips_for_names(chip_names, wafer_name, len(configs["chips"]), session)
-
+    
     for measurement_config in configs["measurements"]:
         ctx.obj["logger"].info(f'Executing measurement {measurement_config["name"]}')
         set_configs(instrument, measurement_config["instrument"])
-
+        
         if measurement_config["program"].get("minimum"):
             raw_measurements = get_minimal_measurements(instrument, configs["measure"])
         else:
             raw_measurements = get_raw_measurements(instrument, configs["measure"])
         
         validate_measurements(raw_measurements, measurement_config, automatic_mode)
-
+        
         for chip, chip_config in zip(chips, configs["chips"], strict=True):
             conditions = IvConditions(
                 chip_state_id=chip_state.id,
@@ -94,18 +108,18 @@ def create_measurements(
     kwarg_keys = list(chip_config.keys())
     raw_numbers = zip(*[raw_measurements[chip_config[key]] for key in kwarg_keys], strict=True)
     measurements = []
-
+    
     for data in raw_numbers:
         measurement_kwargs = dict(zip(kwarg_keys, data))
-
+        
         if "anode_current" in measurement_kwargs:
             anode_current = measurement_kwargs["anode_current"]
             anode_current_corrected = compute_corrected_current(temperature, anode_current)
             measurement_kwargs["anode_current_corrected"] = anode_current_corrected
-
+        
         if configs["instruments"]["pyvisa"].get("invert_voltage", False):
             measurement_kwargs["voltage_input"] *= -1
-
+        
         measurements.append(IVMeasurement(**measurement_kwargs))
     return measurements
 
@@ -113,7 +127,7 @@ def create_measurements(
 def get_minimal_measurements(instrument: GPIBInstrument, configs: dict):
     def linear(x, a, b):
         return a + b * x
-
+    
     prev_measurements: dict[str, list] = dict()
     while True:
         raw_measurements = get_raw_measurements(instrument, configs)
@@ -145,14 +159,14 @@ def get_temperature(sensor_id) -> float:
         errmsg = YRefParam()
         if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
             raise RuntimeError("RegisterHub (temperature sensor) error: " + errmsg.value)
-
+        
         # TODO: does it work with simple 'temperature' instead of sensor_id?
         sensor: YTemperature = YTemperature.FindTemperature(sensor_id)
         if not (sensor.isOnline()):
             raise RuntimeError("Temperature sensor is not connected")
-
+        
         temperature = sensor.get_currentValue()
-
+    
     finally:
         YAPI.FreeAPI()
     return temperature
@@ -161,7 +175,7 @@ def get_temperature(sensor_id) -> float:
 def validate_temperature(temperature, ctx: click.Context):
     if 18 <= temperature <= 30:
         return True
-
+    
     if temperature < 0:
         ctx.obj["logger"].error(
             f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!"
@@ -169,7 +183,7 @@ def validate_temperature(temperature, ctx: click.Context):
         raise click.Abort(
             f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!"
         )
-
+    
     ctx.obj["logger"].warning(
         f"Current temperature is too {'low' if temperature < 18 else 'high'}. temp: {temperature:.2f}"
     )

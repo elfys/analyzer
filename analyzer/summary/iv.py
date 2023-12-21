@@ -1,21 +1,45 @@
-from datetime import date, datetime
+from datetime import (
+    date,
+    datetime,
+)
 from decimal import Decimal
-from typing import Any, Iterable, Optional, Union
+from typing import (
+    Any,
+    Iterable,
+    Optional,
+    Union,
+)
 
 import click
 import pandas as pd
 from openpyxl.styles import PatternFill
-from sqlalchemy.orm import Session, contains_eager, joinedload, undefer
+from sqlalchemy.orm import (
+    Session,
+    contains_eager,
+    joinedload,
+    undefer,
+)
 
 from analyzer.summary.common import (
-    apply_conditional_formatting, date_formats,
+    apply_conditional_formatting,
+    date_formats,
     date_formats_help,
     get_info,
     get_slice_by_voltages,
     plot_data,
 )
-from orm import Chip, ChipState, IVMeasurement, IvConditions, Wafer
-from utils import EntityOption, get_indexed_filename, get_thresholds
+from orm import (
+    Chip,
+    ChipState,
+    IVMeasurement,
+    IvConditions,
+    Wafer,
+)
+from utils import (
+    EntityOption,
+    get_indexed_filename,
+    get_thresholds,
+)
 
 
 @click.command(name="iv", help="Make summary (png and xlsx) for IV measurements' data.")
@@ -65,7 +89,7 @@ def summary_iv(
         wafer = session.query(Wafer).filter(Wafer.name == wafer_name).first()
     else:
         wafer = ctx.obj["default_wafer"]
-
+    
     query = (
         session.query(IvConditions)
         .join(IvConditions.measurements)
@@ -79,25 +103,25 @@ def summary_iv(
             undefer(IvConditions.datetime),
         )
     )
-
+    
     if chips_type is not None:
         query = query.filter(IvConditions.chip.has(Chip.type == chips_type))
     else:
         ctx.obj["logger"].info(
             "Chips type (-t or --chips-type) is not specified. Analyzing all chip types."
         )
-
+    
     if before is not None or after is not None:
         after = after if after is not None else date.min
         before = before if before is not None else date.max
         query = query.filter(IvConditions.datetime.between(after, before))
-
+    
     conditions = query.all()
-
+    
     if not conditions:
         ctx.obj["logger"].warning("No measurements found.")
         return
-
+    
     # sort conditions by amplitude of voltage, smaller go last
     # thus more precise measurements from -0.01 to 0.01 will overwrite less precise from -1 to 20
     conditions: list[IvConditions] = sorted(
@@ -110,20 +134,20 @@ def summary_iv(
     }.values()
     
     sheets_data = get_sheets_iv_data(measurements)
-
+    
     voltages = sheets_data["anode"].columns.intersection(
         map(Decimal, ["-1", "0.01", "5", "6", "10", "20"])
     )
     thresholds = get_thresholds(session, "IV")
-
+    
     chips_types = (
         {chips_type}
         if chips_type is not None
         else {condition.chip.type for condition in conditions}
     )
-
+    
     file_name = get_indexed_filename(f"Summary-IV-{wafer_name}", ("png", "xlsx"))
-
+    
     if len(chips_types) > 1:
         ctx.obj["logger"].warning(
             f"Multiple chip types are found ({chips_types}). Plotting is not supported and will be skipped."
@@ -139,15 +163,15 @@ def summary_iv(
         fig.suptitle(wafer_name, fontsize=14)
         for ax_row in axes:
             ax_row[0].set_xlabel("Anode current [pA]")
-
+        
         png_file_name = f"{file_name}.png"
         fig.savefig(png_file_name, dpi=300)
         ctx.obj["logger"].info(f"Summary data is plotted to {png_file_name}")
-
+    
     exel_file_name = f"{file_name}.xlsx"
     info = get_info(wafer=wafer, chip_states=chip_states, measurements=conditions)
     save_iv_summary_to_excel(sheets_data, info, exel_file_name, voltages, thresholds)
-
+    
     ctx.obj["logger"].info(f"Summary data is saved to {exel_file_name}")
 
 
@@ -163,7 +187,7 @@ def save_iv_summary_to_excel(
         "lessThan": PatternFill(bgColor="ee9090", fill_type="solid"),
         "greaterThanOrEqual": PatternFill(bgColor="90ee90", fill_type="solid"),
     }
-
+    
     with pd.ExcelWriter(file_name) as writer:
         summary_df.rename(columns=float).to_excel(writer, sheet_name="Summary")
         apply_conditional_formatting(

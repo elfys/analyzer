@@ -1,6 +1,14 @@
 from decimal import Decimal
-from time import localtime, strftime
-from typing import Any, Collection, Iterable, Union
+from time import (
+    localtime,
+    strftime,
+)
+from typing import (
+    Any,
+    Collection,
+    Iterable,
+    Union,
+)
 
 import click
 import numpy as np
@@ -14,7 +22,13 @@ from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Fill
 from openpyxl.worksheet.worksheet import Worksheet
 
-from orm import CVMeasurement, ChipState, IVMeasurement, IvConditions, Wafer
+from orm import (
+    CVMeasurement,
+    ChipState,
+    IVMeasurement,
+    IvConditions,
+    Wafer,
+)
 
 date_formats = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
 date_formats_help = f"Supported formats are: {', '.join((strftime(f) for f in date_formats))}."
@@ -23,7 +37,7 @@ date_formats_help = f"Supported formats are: {', '.join((strftime(f) for f in da
 def get_slice_by_voltages(df: pd.DataFrame, voltages: Iterable[Decimal]) -> pd.DataFrame:
     columns = sorted(voltages)
     slice_df = df[df.columns.intersection(columns)].copy()
-
+    
     empty_cols = slice_df.isna().all(axis=0)
     if empty_cols.any():
         click.get_current_context().obj["logger"].warning(
@@ -40,11 +54,11 @@ def apply_conditional_formatting(
     thresholds: dict[str, dict[Decimal, float]],
 ):
     chip_row_index = [(i + 1, cell.value) for i, cell in enumerate(sheet["A"]) if cell.value]
-
+    
     for chip_type, chip_type_thresholds in thresholds.items():
         def is_current_type(chip_name: str) -> bool:
             return chip_name.startswith(chip_type)
-
+        
         for voltage, threshold in chip_type_thresholds.items():
             try:
                 column_cell = next(
@@ -58,7 +72,7 @@ def apply_conditional_formatting(
                 last_row_index = next(i for i, v in reversed(chip_row_index) if is_current_type(v))
             except (ValueError, StopIteration):
                 continue
-
+            
             column_letter = column_cell.column_letter
             cell_range = f"{column_letter}{first_row_index}:{column_letter}{last_row_index}"
             for rule_name, rule in rules.items():
@@ -73,10 +87,10 @@ def get_info(
 ) -> pd.Series:
     format_date = strftime("%A, %d %b %Y", localtime())
     chip_states_str = "; ".join([state.name for state in chip_states])
-
+    
     first_measurement = min(measurements, key=lambda m: m.datetime)
     last_measurement = max(measurements, key=lambda m: m.datetime)
-
+    
     return pd.Series(
         {
             "Wafer": wafer.name,
@@ -98,7 +112,7 @@ def plot_heat_map(ax: Axes, values: np.ndarray, xs: np.ndarray, ys: np.ndarray, 
     height = ys.max() - ys.min() + 1
     grid = np.full((height, width), np.nan)
     grid[ys - ys.min(), xs - xs.min()] = values
-
+    
     X = np.linspace(min(xs) - 0.5, max(xs) + 0.5, width + 1)
     Y = np.linspace(min(ys) - 0.5, max(ys) + 0.5, height + 1)
     mesh = ax.pcolormesh(X, Y, grid, cmap="hot", shading="flat", vmin=vmin, vmax=vmax)
@@ -147,7 +161,7 @@ def plot_data(
         },
     )
     axes = axes.reshape(-1, cols_num)
-
+    
     with click.progressbar(tuple(enumerate(sorted(voltages))), label="Plotting...") as progress:
         for i, voltage in progress:
             target_values = [value for value in values if value.voltage_input == voltage]
@@ -159,9 +173,9 @@ def plot_data(
                 data, xs, ys = get_cv_plot_data(target_values)
             else:
                 raise RuntimeError("Unknown object type was provided")
-
+            
             axes[i][0].set_title(f"{voltage}V")
-
+            
             if failure_map:
                 if voltage not in thresholds:
                     click.get_current_context().obj["logger"].warning(

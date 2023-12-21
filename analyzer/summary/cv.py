@@ -1,21 +1,41 @@
-from datetime import date, datetime
+from datetime import (
+    date,
+    datetime,
+)
 from decimal import Decimal
-from typing import Any, Iterable, Union
+from typing import (
+    Any,
+    Iterable,
+    Union,
+)
 
 import click
 import pandas as pd
 from openpyxl.styles import PatternFill
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import (
+    Session,
+    joinedload,
+)
 
 from analyzer.summary.common import (
-    apply_conditional_formatting, date_formats,
+    apply_conditional_formatting,
+    date_formats,
     date_formats_help,
     get_info,
     get_slice_by_voltages,
     plot_data,
 )
-from orm import CVMeasurement, Chip, ChipState, Wafer
-from utils import EntityOption, get_indexed_filename, get_thresholds
+from orm import (
+    CVMeasurement,
+    Chip,
+    ChipState,
+    Wafer,
+)
+from utils import (
+    EntityOption,
+    get_indexed_filename,
+    get_thresholds,
+)
 
 
 @click.command(name="cv", help="Make summary (png and xlsx) for CV measurements' data.")
@@ -70,7 +90,7 @@ def summary_cv(
         .filter(CVMeasurement.chip.has(Chip.wafer.__eq__(wafer)))
         .options(joinedload(CVMeasurement.chip))
     )
-
+    
     # TODO: use EntityChoice with default=ALL instead
     if chips_type is not None:
         query = query.filter(CVMeasurement.chip.has(Chip.type.__eq__(chips_type)))
@@ -78,32 +98,32 @@ def summary_cv(
         ctx.obj["logger"].info(
             "Chips type (-t or --chips-type) is not specified. Analyzing all chip types."
         )
-
+    
     query = query.filter(CVMeasurement.chip_state_id.in_((c.id for c in chip_states)))
-
+    
     if before is not None or after is not None:
         after = after if after is not None else date.min
         before = before if before is not None else date.max
         query = query.filter(CVMeasurement.datetime.between(after, before))
-
+    
     measurements: list[CVMeasurement] = query.all()
-
+    
     if not measurements:
         ctx.obj["logger"].warning("No measurements found.")
         return
-
+    
     chips_types = (
         {chips_type}
         if chips_type is not None
         else {measurement.chip.type for measurement in measurements}
     )
-
+    
     sheets_data = get_sheets_cv_data(measurements)
     voltages = sorted(Decimal(v) for v in ["-5", "0", "-35"])
     thresholds = get_thresholds(session, "CV")
-
+    
     file_name = get_indexed_filename(f"Summary-CV-{wafer_name}", ("png", "xlsx"))
-
+    
     if len(chips_types) > 1:
         ctx.obj["logger"].warning(
             f"Multiple chip types are found ({chips_types}). Plotting is not supported and will be skipped."
@@ -114,16 +134,16 @@ def summary_cv(
         fig.suptitle(wafer_name, fontsize=14)
         for ax_row in axes:
             ax_row[0].set_xlabel("Capacitance [pF]")
-
+        
         png_file_name = f"{file_name}.png"
-
+        
         fig.savefig(png_file_name, dpi=300)
         ctx.obj["logger"].info(f"Summary data is plotted to {png_file_name}")
-
+    
     exel_file_name = f"{file_name}.xlsx"
     info = get_info(wafer=wafer, chip_states=chip_states, measurements=measurements)
     save_cv_summary_to_excel(sheets_data, info, exel_file_name, voltages, thresholds)
-
+    
     ctx.obj["logger"].info(f"Summary data is saved to {exel_file_name}")
 
 
@@ -139,7 +159,7 @@ def save_cv_summary_to_excel(
         "greaterThanOrEqual": PatternFill(bgColor="ee9090", fill_type="solid"),
         "lessThan": PatternFill(bgColor="90ee90", fill_type="solid"),
     }
-
+    
     with pd.ExcelWriter(file_name) as writer:
         summary_df.to_excel(writer, sheet_name="Summary")
         apply_conditional_formatting(
@@ -147,7 +167,7 @@ def save_cv_summary_to_excel(
             rules,
             thresholds,
         )
-
+        
         sheets_data["capacitance"].rename(columns=float).to_excel(writer, sheet_name="All data")
         info.to_excel(writer, sheet_name="Info")
 

@@ -6,10 +6,16 @@ import pytest  # noqa F401
 import pytest_alembic
 from click.testing import CliRunner
 from pytest_alembic import Config
-from pytest_alembic.tests import test_model_definitions_match_ddl
-from pytest_alembic.tests import test_single_head_revision
-from pytest_alembic.tests import test_upgrade
-from sqlalchemy import text, create_engine, make_url
+from pytest_alembic.tests import (
+    test_model_definitions_match_ddl,
+    test_single_head_revision,
+    test_upgrade,
+)
+from sqlalchemy import (
+    create_engine,
+    make_url,
+    text,
+)
 from sqlalchemy.orm import Session
 
 from analyzer.tests.log_mem_handler import LogMemHandler
@@ -26,7 +32,7 @@ def set_keyring():
         if name == "HOST":
             return "nn-vm"
         raise ValueError(f"Unexpected name: {name}")
-
+    
     keyring.get_password = get_password
 
 

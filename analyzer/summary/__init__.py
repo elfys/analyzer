@@ -17,7 +17,7 @@ from orm import Wafer
 def summary_group(ctx: click.Context):
     session: Session = ctx.obj["session"]
     active_command = summary_group.commands[ctx.invoked_subcommand]
-
+    
     try:
         wafer_option = next(
             (o for o in active_command.params if o.name == "wafer_name" and o.prompt)

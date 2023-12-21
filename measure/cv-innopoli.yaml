@@ -25,7 +25,7 @@ chips:
       prop: voltage_input
     capacitance:
       prop: output
-      slice: [null, null, 4]
+      slice: [ null, null, 4 ]
 
 
 measurements:
@@ -60,4 +60,4 @@ measurements:
           max:
             value: !!float 1e+37
             message: Instrument overflow error
-      measurements_kwargs: {}
+      measurements_kwargs: { }

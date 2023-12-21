@@ -91,7 +91,7 @@ measurements:
       # Trigger the measurement
       - "trigger.timer[1].reset()" # resets the attributes associated with timer 1 back to the factory default values. Timers perform a delay
       - "trigger.timer[1].stimulus = smua.trigger.SOURCE_COMPLETE_EVENT_ID" # smu completes a source action
-#      - "trigger.timer[1].delay = stime" # delay interval
+      #      - "trigger.timer[1].delay = stime" # delay interval
       - "smua.trigger.arm.count = 1" # number of times to perform sweep
       - "smua.trigger.source.listv(vlist)" # sweeps  smuA through vlist
       - "smua.trigger.source.action = smua.ENABLE" # enables the source action

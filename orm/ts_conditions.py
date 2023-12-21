@@ -1,13 +1,17 @@
 import datetime as datetime
 
 from sqlalchemy import (
-    ForeignKey,
-    UniqueConstraint,
-    SmallInteger,
-    VARCHAR,
     DateTime,
+    ForeignKey,
+    SmallInteger,
+    UniqueConstraint,
+    VARCHAR,
 )
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from .base import Base
 
@@ -23,9 +27,9 @@ class TsConditions(Base):
             name="unique_ts_condition",
         ),
     )
-
+    
     id: Mapped[int] = mapped_column(primary_key=True)
-
+    
     chip_id: Mapped[int] = mapped_column(
         ForeignKey(
             "chip.id",
@@ -43,6 +47,6 @@ class TsConditions(Base):
     ts_step: Mapped[int] = mapped_column(SmallInteger)
     ts_number: Mapped[int] = mapped_column(SmallInteger)
     datetime: Mapped[datetime] = mapped_column(DateTime())
-
+    
     def __repr__(self):
         return f"<TsConditions(id={self.id}, datetime={self.datetime}>"

@@ -1,12 +1,16 @@
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from .base import Base
 
 
 class TsMeasurement(Base):
     __tablename__ = "ts_data"
-
+    
     id: Mapped[int] = mapped_column(primary_key=True)
     current: Mapped[float]
     voltage_1: Mapped[float]
@@ -21,8 +25,8 @@ class TsMeasurement(Base):
         ),
         index=True,
     )
-
+    
     conditions: Mapped["TsConditions"] = relationship(back_populates="measurements")  # noqa: F821
-
+    
     def __repr__(self):
         return f"<TsMeasurement(id={self.id}, current={self.current})>"

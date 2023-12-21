@@ -20,7 +20,7 @@ def get_thresholds(
         ).scalar_one()
     else:
         raise ValueError(f"Unknown threshold kind: {kind}")
-
+    
     return {
         chip_type: {
             Decimal(voltage).quantize(precision): threshold

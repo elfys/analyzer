@@ -6,7 +6,7 @@ import click
 
 def validate_wafer_name(ctx, param, wafer_name: str):
     special_wafer_names = {"TEST", "REF"}
-
+    
     wafer_name = wafer_name.upper()
     if wafer_name in special_wafer_names:
         return wafer_name

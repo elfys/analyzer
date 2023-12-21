@@ -12,7 +12,10 @@ from orm import ClientVersion
 from utils import get_db_url
 from version import VERSION
 from .compare import compare_group
-from .db import db_group, set_db
+from .db import (
+    db_group,
+    set_db,
+)
 from .parse import parse_group
 from .show import show_group
 from .summary import summary_group
@@ -47,10 +50,10 @@ def analyzer(ctx: click.Context, log_level: str, db_url: Union[str, None]):
     else:
         logger = logging.getLogger("analyzer")
         logger.setLevel(log_level)
-
+    
     ctx.obj["logger"] = logger
     debug = log_level == "DEBUG"
-
+    
     active_command = analyzer.commands[ctx.invoked_subcommand]
     if active_command is not db_group:
         try:

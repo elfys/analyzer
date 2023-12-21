@@ -18,7 +18,7 @@ def remember_choice(message: str):
                 apply_to_all = click.confirm(message.format(str(choice)), default=False)
                 fn.__previous_choice = choice if apply_to_all else None
             return choice
-
+        
         return wrapper
-
+    
     return decorate

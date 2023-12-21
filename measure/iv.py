@@ -1,4 +1,3 @@
-import pprint
 from random import random
 from time import sleep
 
@@ -6,20 +5,14 @@ import click
 import numpy as np
 from pyvisa.resources import GPIBInstrument
 from scipy.optimize import curve_fit
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from yoctopuce.yocto_temperature import YAPI, YRefParam, YTemperature
 
-from orm import IVMeasurement, IvConditions, Instrument, Wafer, ChipState
+from orm import ChipState, IVMeasurement, Instrument, IvConditions
 from utils import (
-    get_or_create_wafer,
-    get_or_create_chips,
     EntityOption,
 )
-from .common import (
-    get_raw_measurements,
-    set_configs,
-    validate_raw_measurements,
-)
+from .common import (get_chips_for_names, get_raw_measurements, set_configs, validate_measurements)
 
 
 @click.command(name="iv", help="Measure IV data of the current chip.")
@@ -63,17 +56,7 @@ def measure_iv(
         .scalar()
     )
 
-    if len(configs["chips"]) != len(chip_names):
-        if len(chip_names) > 0:
-            ctx.obj["logger"].warning(
-                f"Number of chip names does not match number of chips in config file. {len(configs['chips'])} chip names expected"
-            )
-        for i in range(len(configs["chips"]) - len(chip_names)):
-            chip_name = click.prompt(f"Input chip name {i + 1}", type=str)
-            chip_names += (chip_name,)
-
-    wafer = get_or_create_wafer(wafer_name, session=session, query_options=joinedload(Wafer.chips))
-    chips = get_or_create_chips(session, wafer, chip_names)
+    chips = get_chips_for_names(chip_names, wafer_name, len(configs["chips"]), session)
 
     for measurement_config in configs["measurements"]:
         ctx.obj["logger"].info(f'Executing measurement {measurement_config["name"]}')
@@ -83,18 +66,8 @@ def measure_iv(
             raw_measurements = get_minimal_measurements(instrument, configs["measure"])
         else:
             raw_measurements = get_raw_measurements(instrument, configs["measure"])
-
-        if measurement_config["program"].get("validation"):
-            validation_config = measurement_config["program"]["validation"]
-            error_msg = validate_raw_measurements(raw_measurements, validation_config)
-            if error_msg is not None:
-                ctx.obj["logger"].warning(error_msg)
-                if automatic_mode:
-                    raise RuntimeError("Measurement is invalid")
-                ctx.obj["logger"].info(
-                    "\n" + pprint.pformat(raw_measurements, compact=True, indent=4)
-                )
-                click.confirm("Do you want to save these measurements?", abort=True, default=True)
+        
+        validate_measurements(raw_measurements, measurement_config, automatic_mode)
 
         for chip, chip_config in zip(chips, configs["chips"], strict=True):
             conditions = IvConditions(

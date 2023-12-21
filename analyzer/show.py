@@ -1,9 +1,15 @@
 import click
 import pandas as pd
-from sqlalchemy import func, select
+from sqlalchemy import (
+    func,
+    select,
+)
 from sqlalchemy.orm import Session
 
-from orm import Wafer, Chip
+from orm import (
+    Chip,
+    Wafer,
+)
 
 
 @click.command(
@@ -33,7 +39,7 @@ def show_wafers(ctx: click.Context, json: bool):
         .order_by(Wafer.record_created_at.desc())
     )
     wafers_df = pd.read_sql(wafers_query, session.connection(), index_col="id")
-
+    
     if json:
         click.echo(wafers_df.to_json(orient="index", indent=4))
     else:

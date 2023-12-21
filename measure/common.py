@@ -6,8 +6,14 @@ from jsonpath_ng import parse
 from pyvisa.resources import GPIBInstrument
 from sqlalchemy.orm import joinedload
 
-from orm import Chip, Wafer
-from utils import get_or_create_chips, get_or_create_wafer
+from orm import (
+    Chip,
+    Wafer,
+)
+from utils import (
+    get_or_create_chips,
+    get_or_create_wafer,
+)
 
 
 def set_configs(instrument: GPIBInstrument, commands: list[str]):
@@ -40,16 +46,16 @@ def validate_measurements(raw_measurements, config: dict, automatic_mode: bool):
     validation_config = config["program"].get("validation")
     if not validation_config:
         return
-
+    
     error_msg = _validate_measurements(raw_measurements, validation_config)
     if error_msg is None:
         return
-
+    
     ctx = click.get_current_context()
     ctx.obj["logger"].warning(error_msg)
     if automatic_mode:
         raise RuntimeError("Measurement is invalid")
-
+    
     ctx.obj["logger"].info("\n" + pprint.pformat(raw_measurements, compact=True, indent=4))
     click.confirm("Do you want to save these measurements?", abort=True, default=True)
 

@@ -2,11 +2,19 @@ import click
 from pyvisa.resources import GPIBInstrument
 from sqlalchemy.orm import Session
 
-from orm import CVMeasurement, ChipState
+from orm import (
+    CVMeasurement,
+    ChipState,
+)
 from utils import (
     EntityOption,
 )
-from .common import get_chips_for_names, set_configs, get_raw_measurements, validate_measurements
+from .common import (
+    get_chips_for_names,
+    get_raw_measurements,
+    set_configs,
+    validate_measurements,
+)
 
 
 @click.command(name="cv", help="Measure CV data of the current chip.")
@@ -45,9 +53,9 @@ def cv(
         ctx.obj["logger"].info(f'Executing measurement {measurement_config["name"]}')
         set_configs(instrument, measurement_config["instrument"])
         raw_measurements = get_raw_measurements(instrument, configs["measure"])
-
+        
         validate_measurements(raw_measurements, measurement_config, automatic_mode)
-
+        
         for chip, chip_config in zip(chips, configs["chips"], strict=True):
             measurements_kwargs = dict(
                 chip_state_id=chip_state.id,
@@ -65,14 +73,14 @@ def create_measurements(
 ) -> list[CVMeasurement]:
     raw_measurements.get("voltage")
     kwarg_keys = list(chip_config.keys())
-
+    
     grouped_numbers = []
     for key in kwarg_keys:
         s = slice(*chip_config[key].get("slice", [None]))
         p = chip_config[key].get("prop", None)
         grouped_numbers.append(raw_measurements[p][s])
     measurements = []
-
+    
     for data in zip(*grouped_numbers, strict=True):
         measurement_kwargs = dict(zip(kwarg_keys, data, strict=True))
         measurements.append(CVMeasurement(**measurement_kwargs, **kwargs))

@@ -2,19 +2,23 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    ForeignKey,
     DATETIME,
-    func,
+    ForeignKey,
     VARCHAR,
+    func,
 )
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from .base import Base
 
 
 class IvConditions(Base):
     __tablename__ = "iv_conditions"
-
+    
     id: Mapped[int] = mapped_column(primary_key=True)
     chip_id: Mapped[int] = mapped_column(
         ForeignKey(
@@ -56,6 +60,6 @@ class IvConditions(Base):
         deferred_group="full",
     )
     instrument: Mapped["Instrument"] = relationship()  # noqa: F821
-
+    
     def __repr__(self):
         return f"<IvConditions(id={self.id}, datetime={self.datetime}>"

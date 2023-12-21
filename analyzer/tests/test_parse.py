@@ -3,12 +3,28 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-from sqlalchemy import desc, text
+from sqlalchemy import (
+    desc,
+    text,
+)
 from sqlalchemy.orm import Session
 
 from analyzer import analyzer
-from analyzer.parse import parse_group, parse_cv, parse_iv, parse_eqe, parse_ts
-from orm import CVMeasurement, EqeConditions, TsConditions, TsMeasurement, Wafer, Chip
+from analyzer.parse import (
+    parse_cv,
+    parse_eqe,
+    parse_group,
+    parse_iv,
+    parse_ts,
+)
+from orm import (
+    CVMeasurement,
+    Chip,
+    EqeConditions,
+    TsConditions,
+    TsMeasurement,
+    Wafer,
+)
 
 
 def should_parse_files(file_items: list[tuple[str, str]]):
@@ -37,14 +53,14 @@ def reset_db(session: Session):
 class TestParseGroup:
     def setup_class(self):
         pass
-
+    
     def teardown_class(self):
         pass
-
+    
     def test_help_ok(self, runner):
         result = runner.invoke(parse_group, ["--help"])
         assert result.exit_code == 0
-
+    
     def test_help_text(self, runner):
         result = runner.invoke(parse_group, ["--help"])
         assert re.search(r"cv\s+parse cv", result.output, re.I) is not None
@@ -66,15 +82,15 @@ class TestParseCV:
             obj=ctx_obj,
             input="\n".join(params),
         )
-
+    
     def test_help_ok(self, runner):
         result = runner.invoke(parse_cv, ["--help"])
         assert result.exit_code == 0
-
+    
     def test_invoke_from_root_group(self, runner, session):
         result = runner.invoke(analyzer, ["parse", "cv", "nothing.dat"])
         assert result.exit_code == 0
-
+    
     @pytest.mark.isolate_files(files=["CV BC6 Y0115.dat"])
     @pytest.mark.invoke(params=["", "y", "", "1"])
     def test_guess_chip_and_wafer_from_filename(self, execution, log_handler, file_items):
@@ -84,9 +100,9 @@ class TestParseCV:
         assert logs[0].message.startswith("Found 1 files matching pattern")
         assert logs[1].message == "Guessed from filename: wafer=BC6, chip=Y0115"
         assert logs[2].message.startswith("File was saved to database and renamed")
-
+        
         should_parse_files(file_items)
-
+    
     @pytest.mark.isolate_files(files=["2_columns.dat"])
     @pytest.mark.invoke(params=["AB1", "y", "U0101", "1"])
     def test_parse_dat_file_with_2_columns(self, execution, log_handler, file_items):
@@ -96,9 +112,9 @@ class TestParseCV:
         assert logs[0].message.startswith("Found 1 files matching pattern")
         assert logs[1].message == "Could not guess chip and wafer from filename"
         assert logs[2].message.startswith("File was saved to database and renamed")
-
+        
         should_parse_files(file_items)
-
+    
     @pytest.mark.isolate_files(files=["6_columns_with_asterisks.dat"])
     def test_parse_dat_file_with_6_columns_with_asterisks(
         self, runner: CliRunner, session, log_handler, file_items, ctx_obj
@@ -110,12 +126,12 @@ class TestParseCV:
             obj=ctx_obj,
             input="\n".join(["AB1", "y", "U0101", "1"]),
         )
-
+        
         assert result.exit_code == 0
         assert len(log_handler.records) == 3
         should_parse_files(file_items)
         assert session.query(CVMeasurement).count() == num_of_measurements + 6
-
+    
     @pytest.mark.isolate_files(files=["2_tables.dat"])
     def test_parse_dat_file_with_2_tables(
         self, runner: CliRunner, session, log_handler, file_items, ctx_obj
@@ -127,25 +143,25 @@ class TestParseCV:
             obj=ctx_obj,
             input="\n".join(["AB1", "y", "U0101", "1"]),
         )
-
+        
         assert result.exit_code == 0
         assert len(log_handler.records) == 3
         should_parse_files(file_items)
         assert session.query(CVMeasurement).count() == num_of_measurements + 12
-
+    
     @pytest.mark.isolate_files(files=["unknown_table_format.dat"])
     @pytest.mark.invoke(params=["AB1", "y", "U0101", "1"])
     def test_parse_unknown_table_format_prints_warning(self, execution, log_handler, file_items):
         assert execution.exit_code == 0
-
+        
         logs = log_handler.records
         assert len(logs) == 4
         assert logs[2].message == "No data was found in given file. Does it use the unusual format?"
         assert logs[2].levelname == "WARNING"
-
+        
         assert logs[3].message == "Skipping file..."
         assert logs[3].levelname == "INFO"
-
+        
         should_not_parse_file(file_items)
 
 
@@ -153,7 +169,7 @@ class TestParseIV:
     def test_help_ok(self, runner):
         result = runner.invoke(parse_iv, ["--help"])
         assert result.exit_code == 0
-
+    
     def test_invoke_from_root_group(self, runner, session):
         result = runner.invoke(analyzer, ["parse", "iv", "nothing.dat"])
         assert result.exit_code == 0
@@ -178,15 +194,15 @@ class TestParseEQE:
             if value is not None
         )
         return runner.invoke(parse_eqe, file_names, obj=obj, input=input)
-
+    
     def test_help_ok(self, runner):
         result = runner.invoke(parse_eqe, ["--help"])
         assert result.exit_code == 0
-
+    
     def test_invoke_from_root_group(self, runner, session):
         result = runner.invoke(analyzer, ["parse", "eqe", "nothing.dat"])
         assert result.exit_code == 0
-
+    
     @pytest.mark.isolate_files(files=["EQE REF FDG50.dat"])
     def test_parse_ref_with_defaults(self, runner, session, log_handler, file_items, ctx_obj):
         result = self.run_command(
@@ -209,12 +225,12 @@ class TestParseEQE:
         assert logs[3].message.startswith("No sessions were found for measurement date")
         assert logs[4].message.startswith("New eqe session was created")
         assert logs[5].message.startswith("File was saved to database and renamed")
-
+        
         new_conditions = session.query(EqeConditions).order_by(desc(EqeConditions.id)).first()
         assert new_conditions.chip_state_id == 8
         assert new_conditions.carrier_id == 11
         should_parse_files(file_items)
-
+    
     @pytest.mark.isolate_files(files=["labview_filename.dat"])
     def test_parse_dat_file_with_labview_filename(
         self, runner: CliRunner, session, log_handler, file_items, ctx_obj
@@ -234,7 +250,7 @@ class TestParseEQE:
         )
         assert result.exit_code == 0
         should_parse_files(file_items)
-
+        
         new_conditions = session.query(EqeConditions).order_by(desc(EqeConditions.id)).first()
         assert (
             new_conditions.comment
@@ -268,17 +284,17 @@ Sweep Measure Size U11X: SMS0000 SMS0000
 @pytest.mark.isolate_files(dir="ts")
 class TestParseTs:
     wafer_name = "AB1"
-
+    
     @pytest.fixture(autouse=True, scope="class")
     def populate_db_with_wafer(self, session):
         wafer = Wafer(name=self.wafer_name)
         session.add(wafer)
         session.commit()
-
+    
     def test_help_ok(self, runner):
         result = runner.invoke(parse_ts, ["--help"])
         assert result.exit_code == 0
-
+    
     @pytest.mark.parametrize(
         "file,ts_type,number,step",
         [
@@ -304,9 +320,9 @@ class TestParseTs:
         result = runner.invoke(
             parse_ts, file, obj=ctx_obj, input="\n".join([self.wafer_name, chip_name])
         )
-
+        
         assert result.exit_code == 0
-
+        
         conditions = session.query(TsConditions).order_by(TsConditions.id.desc()).first()
         assert conditions.chip.name == chip_name
         assert conditions.chip.test_structure is True
@@ -314,7 +330,7 @@ class TestParseTs:
         assert conditions.ts_step == step
         assert conditions.ts_number == number
         assert conditions.structure_type == ts_type
-
+        
         assert session.query(TsMeasurement).count() == num_of_measurements + 21
-
+        
         should_parse_files([file_item for file_item in file_items if file_item[0] == file])

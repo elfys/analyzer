@@ -6,10 +6,19 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from sqlalchemy import text
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import (
+    Session,
+    joinedload,
+)
 
-from orm import EqeConditions, EqeSession
-from utils import eqe_session_date, get_indexed_filename
+from orm import (
+    EqeConditions,
+    EqeSession,
+)
+from utils import (
+    eqe_session_date,
+    get_indexed_filename,
+)
 
 
 @click.command(name="eqe", help="Make summary for EQE measurements' data.")
@@ -54,7 +63,7 @@ def summary_eqe(
         ctx.obj["logger"].warning("No measurements found.")
         ctx.exit()
     ctx.obj["logger"].info("EQE data is loaded.")
-
+    
     file_name = f"Summary-EQE-{title.replace(' ', '-')}"
     file_name = get_indexed_filename(file_name, ("png", "xlsx"))
     png_file_name, exel_file_name = f"{file_name}.png", f"{file_name}.xlsx"
@@ -63,19 +72,19 @@ def summary_eqe(
     fig.suptitle(f"EQE summary for {title}")
     fig.savefig(png_file_name, dpi=300)
     ctx.obj["logger"].info(f"EQE data is plotted to {png_file_name}")
-
+    
     sheets_data = get_sheets_eqe_data(conditions)
     with pd.ExcelWriter(exel_file_name) as writer:
         for sheet_data in sheets_data:
             sheet_data["df"].to_excel(writer, sheet_name=sheet_data["name"])
-
+    
     ctx.obj["logger"].info(f"Summary data is saved to {exel_file_name}")
 
 
 def get_eqe_plot_figure(sheets_data, no_ref=False) -> plt.Figure:
     plottable_sheets = [sheet for sheet in sheets_data if sheet.get("prop") is not None]
     fig, axes = plt.subplots(len(plottable_sheets), 1, figsize=(10, 15))
-
+    
     for sheet_data, ax in zip(plottable_sheets, axes.ravel()):
         ax: Axes
         last_rows = sheet_data["df"].groupby(by=["Wafer", "Chip"]).last()
@@ -123,7 +132,7 @@ def query_eqe_conditions(ctx, eqe_session, wafer_name) -> list[EqeConditions]:
 
 def get_sheets_eqe_data(conditions: list[EqeConditions]) -> list[dict]:
     all_sheets = []
-
+    
     series_list = []
     for condition in conditions:
         series_list.append(pd.Series({
@@ -139,7 +148,7 @@ def get_sheets_eqe_data(conditions: list[EqeConditions]) -> list[dict]:
     df_info.set_index("Datetime", inplace=True)
     df_info = df_info.sort_index()
     all_sheets.append({"df": df_info, "name": "Info"})
-
+    
     for prop, name, unit in (
         ("eqe", "EQE", "%"),
         ("light_current", "Light current", "A"),
@@ -163,5 +172,5 @@ def get_sheets_eqe_data(conditions: list[EqeConditions]) -> list[dict]:
         df.set_index("Datetime", inplace=True)
         df = df.sort_index()
         all_sheets.append({"name": name, "df": df, "prop": prop, "unit": unit})
-
+    
     return all_sheets

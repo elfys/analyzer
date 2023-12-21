@@ -2,20 +2,24 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    ForeignKey,
-    func,
-    VARCHAR,
-    TEXT,
     DateTime,
+    ForeignKey,
+    TEXT,
+    VARCHAR,
+    func,
 )
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from .base import Base
 
 
 class EqeConditions(Base):
     __tablename__ = "eqe_conditions"
-
+    
     id: Mapped[int] = mapped_column(primary_key=True)
     chip_id: Mapped[int] = mapped_column(
         ForeignKey(
@@ -76,6 +80,6 @@ class EqeConditions(Base):
     )
     carrier: Mapped["Carrier"] = relationship()  # noqa: F821
     comment: Mapped[Optional[str]] = mapped_column(TEXT, deferred_group="full")
-
+    
     def __repr__(self):
         return f"<EqeConditions(id={self.id}, datetime={self.datetime}>"

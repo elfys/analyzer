@@ -3,13 +3,19 @@ import re
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
-from typing import Union, Generator
+from typing import (
+    Generator,
+    Union,
+)
 
 import click
 import numpy as np
 import pandas as pd
 import sentry_sdk
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import (
+    Session,
+    joinedload,
+)
 
 from orm import (
     CVMeasurement,
@@ -22,12 +28,20 @@ from orm import (
     IVMeasurement,
     Instrument,
     IvConditions,
-    Wafer,
-    TsMeasurement,
     TsConditions,
+    TsMeasurement,
+    Wafer,
 )
-from utils import eqe_defaults, remember_choice, validate_files_glob, select_one
-from utils.getters_or_creators import get_or_create_wafer, get_or_create_chips
+from utils import (
+    eqe_defaults,
+    remember_choice,
+    select_one,
+    validate_files_glob,
+)
+from utils.getters_or_creators import (
+    get_or_create_chips,
+    get_or_create_wafer,
+)
 
 
 @click.command(name="iv", help="Parse IV measurements")
@@ -77,13 +91,13 @@ def parse_cv(ctx: click.Context, file_paths: tuple[Path]):
 @click.pass_context
 def parse_ts(ctx: click.Context, file_paths: tuple[Path]):
     session = ctx.obj["session"]
-
+    
     wafer = get_or_create_wafer(session=session)
     ctx.obj["logger"].info(f"{wafer.name} will be used for every parsed measurement")
     chip_name = ask_chip_name()
     chip = get_or_create_chips(session, wafer, [chip_name])[0]
     chip.test_structure = True
-
+    
     for file_path in file_paths:
         with parsing_file(file_path, ctx):
             columns = ["ISR", "V1", "V2", "R"]
@@ -100,7 +114,7 @@ def parse_ts(ctx: click.Context, file_paths: tuple[Path]):
 def parse_eqe(ctx: click.Context, file_paths: tuple[Path]):
     session: Session = ctx.obj["session"]
     instrument_map: dict[str, Instrument] = {i.name: i for i in session.query(Instrument).all()}
-
+    
     for file_path in file_paths:
         with parsing_file(file_path, ctx):
             data = parse_eqe_dat_file(file_path)
@@ -125,7 +139,7 @@ def parse_group():
 @contextlib.contextmanager
 def parsing_file(file_path: Path, ctx):
     session: Session = ctx.obj["session"]
-
+    
     print_filename_title(file_path)
     try:
         transaction = session.begin_nested()
@@ -150,7 +164,7 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
     prefix = "|".join(structure_types)
     matcher = re.compile(rf"^(?P<ts_type>{prefix})(?P<ts_number>\d)(?P<ts_step>\d).*$", re.I)
     match = matcher.match(filename)
-
+    
     if match is None:
         click.get_current_context().obj["logger"].warning(
             "Could not guess TS parameters from the filename"
@@ -162,7 +176,7 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
     click.get_current_context().obj["logger"].info(
         f"Guessed from filename: Structure type={ts_type}, Number={ts_number}, Step={ts_step}"
     )
-
+    
     conditions = TsConditions(
         structure_type=ts_type,
         ts_step=ts_step,
@@ -175,7 +189,7 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
 def guess_chip_and_wafer(filename: str, prefix: str, session: Session) -> tuple[Chip, Wafer]:
     matcher = re.compile(rf"^{prefix}\s+(?P<wafer>[\w\d]+)\s+(?P<chip>[\w\d-]+)(\s.*)?\..*$", re.I)
     match = matcher.match(filename)
-
+    
     if match is None:
         chip_name = None
         wafer_name = None
@@ -188,13 +202,13 @@ def guess_chip_and_wafer(filename: str, prefix: str, session: Session) -> tuple[
         click.get_current_context().obj["logger"].info(
             f"Guessed from filename: wafer={wafer_name}, chip={chip_name}"
         )
-
+    
     wafer = get_or_create_wafer(
         default=wafer_name, session=session, query_options=joinedload(Wafer.chips)
     )
     chip_name = ask_chip_name(chip_name)
     chip = get_or_create_chips(session, wafer, [chip_name])[0]
-
+    
     return chip, wafer
 
 
@@ -270,22 +284,22 @@ def parse_eqe_dat_file(file_path: Path) -> dict:
         match = re.compile(pattern, re.MULTILINE).search(contents)
         if match:
             conditions[prop] = factory(match.group(1))
-            contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1 :]
-
+            contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1:]
+    
     table_matcher = re.compile(r"MEASUREMENT DATA STARTS\s*(?P<table>[\s\S]*)", re.M | re.I)
     match = table_matcher.search(contents)
     data = pd.read_csv(StringIO(match.group("table")), sep="\t").replace(float("nan"), None)
-    contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1 :]
+    contents = contents[: match.span(0)[0]] + contents[match.span(0)[1] + 1:]
     conditions["comment"] = contents
     return {"conditions": conditions, "data": data}
 
 
 def parse_epg_dat_file(file_path: Path, columns) -> dict[str, Union[datetime, list[pd.DataFrame]]]:
     content = file_path.read_text()
-
+    
     date_matcher = re.compile(r"^Date:\s*(?P<date>[\d/]+)\s*$", re.M | re.I)
     date_match = date_matcher.search(content)
-
+    
     if date_match is None:
         click.get_current_context().obj["logger"].warning("Could not guess date from file")
         date = click.prompt(
@@ -296,7 +310,7 @@ def parse_epg_dat_file(file_path: Path, columns) -> dict[str, Union[datetime, li
         )
     else:
         date = datetime.strptime(date_match.group("date"), "%m/%d/%Y")
-
+    
     time_matcher = re.compile(r"^Time:\s*(?P<time>[\d:]+)\s*$", re.M | re.I)
     time_match = time_matcher.search(content)
     if time_match is None:
@@ -310,7 +324,7 @@ def parse_epg_dat_file(file_path: Path, columns) -> dict[str, Union[datetime, li
     else:
         time = datetime.strptime(time_match.group("time"), "%H:%M:%S")
     timestamp = datetime.combine(date, datetime.time(time))
-
+    
     data: list[pd.DataFrame] = []
     for chunk in re.split(r"[\n\r]{2}", content, 0, re.M):
         if not chunk.strip():
@@ -318,7 +332,7 @@ def parse_epg_dat_file(file_path: Path, columns) -> dict[str, Union[datetime, li
         df = pd.read_csv(StringIO(chunk.strip()), sep="\t")
         if np.all([c in df.columns for c in columns]):
             data.append(df)
-
+    
     if len(data) == 0:
         click.get_current_context().obj["logger"].warning(
             "No data was found in given file. Does it use the unusual format?"
@@ -363,7 +377,7 @@ def create_eqe_measurements(
         "Standard deviation (A)": "std",
         "Responsivity (A/W)": "responsivity",
     }
-
+    
     for _, row in data.iterrows():
         yield EqeMeasurement(
             **{header_to_prop_map[header]: row[header] for header in data.columns},
@@ -396,28 +410,28 @@ def create_eqe_conditions(
             f"Found existing eqe measurements at {raw_data['datetime']}:\n{existing_str}"
         )
         click.confirm("Are you sure you want to add new measurements?", abort=True)
-
+    
     instrument = instrument_map.get(raw_data.pop("instrument"), None)
     if instrument is None:
         click.get_current_context().obj["logger"].warning(
             "Could not find instrument in provided file"
         )
         instrument = select_one(list(instrument_map.values()), "Select instrument")
-
+    
     user_comment = click.prompt("Add comments for measurements", default="", show_default=False)
     comment = (
         f"Parsing comment: {user_comment}\n"
         f"Parsed file: {file_path.name}\n"
         f"{raw_data.get('comment', '')}"
     )
-
+    
     conditions_data = {
         **raw_data,
         "chip": chip,
         "comment": comment or None,
         "instrument": instrument,
     }
-
+    
     if chip.wafer.name == "REF":
         defaults = eqe_defaults.get(chip.name, None)
         if defaults is not None:
@@ -425,21 +439,21 @@ def create_eqe_conditions(
                 f"Default values were applied to chip {chip.name}: {defaults}"
             )
             conditions_data.update(defaults)
-
+    
     if "chip_state" not in conditions_data and "chip_state_id" not in conditions_data:
         conditions_data["chip_state"] = ask_chip_state(session)
     if "carrier" not in conditions_data and "carrier_id" not in conditions_data:
         conditions_data["carrier"] = ask_carrier(session)
-
+    
     conditions_data["session"] = ask_session(raw_data["datetime"], session)
-
+    
     return EqeConditions(**conditions_data)
 
 
 def print_filename_title(path: Path, top_margin: int = 2, bottom_margin: int = 1):
     if top_margin:
         click.echo("\n" * top_margin, nl=False)
-
+    
     click.get_current_context().obj["logger"].debug(f"Processing file: {path.name}")
     click.echo("╔" + "═" * (len(path.name) + 2) + "╗")
     click.echo("║ " + path.name + " ║")

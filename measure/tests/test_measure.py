@@ -1,14 +1,21 @@
 import pytest
-from click.testing import CliRunner, Result
+from click.testing import (
+    CliRunner,
+    Result,
+)
 
 from measure import measure_group
-from orm import Chip, Wafer, IvConditions
+from orm import (
+    Chip,
+    IvConditions,
+    Wafer,
+)
 
 
 class TestMeasureIVAutomatic:
     chip_name = "X0506"
     wafer_name = "AB4"
-
+    
     @pytest.fixture(autouse=True, scope="class")
     def measure(self, runner: CliRunner, db_url) -> Result:
         result = runner.invoke(
@@ -30,28 +37,28 @@ class TestMeasureIVAutomatic:
             ],
         )
         yield result
-
+    
     @pytest.fixture
     def wafer(self, session):
         return session.query(Wafer).filter(Wafer.name == self.wafer_name).one_or_none()
-
+    
     @pytest.fixture
     def chip(self, session, wafer):
         return session.query(Chip).filter(Chip.wafer == wafer).one_or_none()
-
+    
     @pytest.fixture
     def iv_conditions(self, session, chip):
         return session.query(IvConditions).filter(IvConditions.chip == chip).all()
-
+    
     def test_exit_code(self, measure):
         assert measure.exit_code == 0
-
+    
     def test_create_new_wafer(self, wafer):
         assert wafer
-
+    
     def test_create_new_chip(self, chip):
         assert chip
-
+    
     def test_save_measurements(self, iv_conditions):
         assert len(iv_conditions) == 2
         for iv_condition in iv_conditions:

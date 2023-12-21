@@ -29,13 +29,13 @@ def db(session: Session):
     session.query(Wafer).delete()
     session.execute(text("ALTER TABLE wafer AUTO_INCREMENT = 1"))  # reset id generator
     session.commit()
-
+    
     wafers = [
         Wafer(name="PD4", record_created_at=datetime(2022, 5, 26)),
         Wafer(name="PD5", record_created_at=datetime(2022, 12, 6)),
         Wafer(name="PD6", record_created_at=datetime(2023, 2, 11)),
     ]
-
+    
     session.add_all(wafers)
     session.commit()
     yield

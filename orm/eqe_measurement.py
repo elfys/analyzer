@@ -1,14 +1,18 @@
 from typing import Optional
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from .base import Base
 
 
 class EqeMeasurement(Base):
     __tablename__ = "eqe_data"
-
+    
     id: Mapped[int] = mapped_column(primary_key=True)
     wavelength: Mapped[int]
     light_current: Mapped[float]
@@ -26,6 +30,6 @@ class EqeMeasurement(Base):
         index=True,
     )
     conditions: Mapped["EqeConditions"] = relationship(back_populates="measurements")  # noqa: F821
-
+    
     def __repr__(self):
         return f"<EqeMeasurement(id={self.id}, wavelength={self.wavelength})>"

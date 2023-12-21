@@ -1,5 +1,6 @@
 from decimal import Decimal
 from time import strftime
+from typing import Iterable
 
 import click
 import numpy as np
@@ -101,7 +102,7 @@ def save_compare_wafers_report(file_name, sheets_data, chip_states):
                     cell.number_format = number_format
 
 
-def get_sheets_data(ctx: click.Context, session, wafers: list[Wafer]) -> dict[str, dict]:
+def get_sheets_data(ctx: click.Context, session, wafers: Iterable[Wafer]) -> dict[str, dict]:
     thresholds = get_thresholds(session, "IV")
 
     threshold_voltages = set({v for x in thresholds.values() for v in x.keys()})

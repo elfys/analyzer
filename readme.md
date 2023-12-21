@@ -41,13 +41,15 @@
 
 - `pylint $(git diff --name-only  | grep '\.py$')` - run pylint linter on changed files
 - `black --line-length 100 $(git diff --name-only  | grep '\.py$')` - run black formatter on changed files
+- `flake8 .` - run flake8 linter
 - `python -m analyzer db dump -l 100` - create a small dump
 - `gzip -d dump_20230202_183945.sql.gz` - unarchive dump
-- `export LAST_DUMP="./dumps/$(ls -t dumps | head -n 1)"; docker compose up` - start database
+- `docker compose up` - start database
 
 ## Usage
 
-Running the program: `python analyzer.exe --help`
+Running the installed program: `analyzer.exe --help`
+Similarly, you can run the program from the source code: `python -m analyzer --help`
 
 ```
    █████╗  ███╗   ██╗  █████╗  ██╗   ██╗   ██╗ ███████╗ ███████╗ ██████╗ 

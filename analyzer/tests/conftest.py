@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-import keyring
 import pytest  # noqa F401
 import pytest_alembic
 from click.testing import CliRunner
@@ -22,35 +21,9 @@ from analyzer.tests.log_mem_handler import LogMemHandler
 from .fixtures import *  # noqa F401
 
 
-def set_keyring():
-    def get_password(service, name):
-        assert service == "ELFYS_DB"
-        if name == "USER":
-            return "root"
-        if name == "PASSWORD":
-            return "pwd"
-        if name == "HOST":
-            return "nn-vm"
-        raise ValueError(f"Unexpected name: {name}")
-    
-    keyring.get_password = get_password
-
-
-def pytest_configure(config):
-    config.addinivalue_line(
-        "markers",
-        "invoke: mark test to invoke commands",
-    )
-    config.addinivalue_line(
-        "markers",
-        "isolate_files: mark test to isolate files in a temporary directory",
-    )
-    set_keyring()
-
-
 @pytest.fixture(scope="session")
-def db_url():
-    return "mysql://root:pwd@nn-vm:3306/test"
+def db_url(request):
+    return request.config.getoption("db_url")
 
 
 @pytest.fixture(scope="session", autouse=True)

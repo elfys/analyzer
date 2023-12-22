@@ -146,7 +146,8 @@ def summary_iv(
         else {condition.chip.type for condition in conditions}
     )
     
-    file_name = get_indexed_filename(f"Summary-IV-{wafer_name}", ("png", "xlsx"))
+    title = f"{wafer_name} {','.join(chips_types)}"
+    file_name = get_indexed_filename(f"Summary-IV-{title.replace(' ', '-')}", ("png", "xlsx"))
     
     if len(chips_types) > 1:
         ctx.obj["logger"].warning(
@@ -160,7 +161,7 @@ def summary_iv(
             quantile,
             thresholds.get(chips_type, {}),
         )
-        fig.suptitle(wafer_name, fontsize=14)
+        fig.suptitle(title, fontsize=14)
         for ax_row in axes:
             ax_row[0].set_xlabel("Anode current [pA]")
         

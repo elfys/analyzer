@@ -190,5 +190,6 @@ def plot_data(
                 lower_bound, upper_bound = np.quantile(data, quantile)
                 clipped_data = np.clip(data, lower_bound, upper_bound)
                 plot_hist(axes[i][0], clipped_data)
+                upper_bound += (upper_bound - lower_bound) * 0.2
                 plot_heat_map(axes[i][1], clipped_data, xs, ys, lower_bound, upper_bound)
     return fig, axes

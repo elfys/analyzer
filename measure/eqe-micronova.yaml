@@ -1,0 +1,59 @@
+# contains a set of instructions for a single chip IV measurement on Keithley SMU 4156 (Micronova)
+# Run print(instrument.query('*IDN?')) to print the name of instrument
+
+instruments:
+  temperature_resource: "PT100MK1-14A17C.temperature"
+  pyvisa:
+    name: "Keithley SMU 4156 (Micronova)"
+    resource: "GPIB0::15::INSTR"
+    kwargs:
+      timeout: 250000
+
+measure:
+  - command: ":PAGE:SCON:SING" # starts the single measurement operation
+    type: "write"
+  - command: "*OPC?" # starts monitoring pending operations and sets/clears the operation complete
+    type: "query"
+  - command: "FORM:DATA ASC" # specifies the data format as ASCII
+    type: "write"
+  - name: voltage_input
+    command: ":DATA? 'V3'"
+    type: "query_ascii_values"
+  - name: anode_current
+    command: ":DATA? 'I1'"
+    type: "query_ascii_values"
+  - name: cathode_current
+    command: ":DATA? 'I3'"
+    type: "query_ascii_values"
+
+chips: # even though this map looks dumb, it is necessary for the box config, which has 3 chips
+  - voltage_input: voltage_input
+    anode_current: anode_current
+    cathode_current: cathode_current
+
+measurements:
+  - name: 5v
+    instrument:
+      - "*CLS"
+      - "*RST"
+      - ":PAGE:CHAN:SMU1:MODE V"
+      - ":PAGE:CHAN:SMU3:MODE V"
+      - ":PAGE:CHAN:SMU2:DIS"
+      - ":PAGE:CHAN:SMU4:DIS"
+      - ":PAGE:CHAN:MODE SAMP"
+      - ":PAGE:DISP:LIST 'V3','I1','I3'"
+      - ":PAGE:MEAS:SAMP:CONS:SMU1:COMP 0.1"
+      - ":PAGE:MEAS:SAMP:CONS:SMU3:COMP 0.1"
+      - ":PAGE:CHAN:SMU1:FUNC CONS"
+      - ":PAGE:CHAN:SMU3:FUNC CONS"
+      - ":PAGE:MEAS:SAMP:POIN 3"
+      - ":PAGE:MEAS:SAMP:IINT 1"
+      - ":PAGE:MEAS:SAMP:CONS:SMU1 0"
+      - ":PAGE:MEAS:SAMP:CONS:SMU3 5"
+      - ":PAGE:MEAS:MSET:ITIM LONG"
+      - ":PAGE:SCON:SING"
+
+    program:
+      minimum: false
+      measurements_kwargs:
+        int_time: LONG

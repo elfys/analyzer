@@ -1,7 +1,7 @@
-import pprint
 from typing import Optional
 
 import click
+import pandas as pd
 from jsonpath_ng import parse
 from pyvisa.resources import GPIBInstrument
 from sqlalchemy.orm import joinedload
@@ -52,12 +52,15 @@ def validate_measurements(raw_measurements, config: dict, automatic_mode: bool):
         return
     
     ctx = click.get_current_context()
-    ctx.obj["logger"].warning(error_msg)
+    ctx.obj["logger"].warning("%s\n%s", error_msg, pd.DataFrame(raw_measurements).to_string(
+        index=False, float_format="%.2e",
+    ))
     if automatic_mode:
         raise RuntimeError("Measurement is invalid")
     
-    ctx.obj["logger"].info("\n" + pprint.pformat(raw_measurements, compact=True, indent=4))
-    click.confirm("Do you want to save these measurements?", abort=True, default=True)
+    click.confirm(
+        "Do you want to save these measurements?",
+        abort=True, default=True, err=True)
 
 
 def _validate_measurements(

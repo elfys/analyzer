@@ -4,7 +4,6 @@ from time import sleep
 import click
 import numpy as np
 from pyvisa.resources import GPIBInstrument
-from scipy.optimize import curve_fit
 from sqlalchemy.orm import Session
 from yoctopuce.yocto_temperature import (
     YAPI,
@@ -125,9 +124,6 @@ def create_measurements(
 
 
 def get_minimal_measurements(instrument: GPIBInstrument, configs: dict):
-    def linear(x, a, b):
-        return a + b * x
-    
     prev_measurements: dict[str, list] = dict()
     while True:
         raw_measurements = get_raw_measurements(instrument, configs)
@@ -138,14 +134,11 @@ def get_minimal_measurements(instrument: GPIBInstrument, configs: dict):
             ydata = raw_measurements["cathode_current"]
         else:
             raise ValueError("No current measurement found")
-        popt, pcov = curve_fit(
-            f=linear, xdata=xdata, ydata=ydata, p0=[0, 0], bounds=(-np.inf, np.inf)
-        )
-        offset = abs(popt[0])
-        if prev_measurements and offset >= prev_measurements["offset"]:
+        slope, offset = np.polyfit(xdata, ydata, 1)
+        if prev_measurements and abs(offset) >= prev_measurements["offset"]:
             prev_measurements.pop("offset")
             return prev_measurements
-        prev_measurements = dict(offset=offset, **raw_measurements)
+        prev_measurements = dict(offset=abs(offset), **raw_measurements)
         sleep(0.5)
 
 

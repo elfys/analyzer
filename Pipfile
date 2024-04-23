@@ -19,7 +19,6 @@ pyvisa = "*"
 pywin32 = { version = "*", markers="sys_platform == 'win32'" }
 pywin32-ctypes = { version = "*", markers="sys_platform == 'win32'" }
 pyyaml = "*"
-scipy = "*"
 sentry-sdk = "*"
 sqlalchemy = "*"
 yoctopuce = "*"

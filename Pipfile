@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 click = "*"
-colorama = { sys_platform = "== 'win32'" }
+colorama = { version = "*", markers="sys_platform == 'win32'" }
 jsonpath-ng = "*"
 keyring = "*"
 matplotlib = "*"
@@ -13,18 +13,18 @@ mysqlclient = "*"
 numpy = "*"
 openpyxl = "*"
 pandas = "*"
-pefile = { sys_platform = "== 'win32'" }
+pefile = { version = "*", markers="sys_platform == 'win32'" }
 pyinstaller = "*"
 pyvisa = "*"
-pywin32 = { sys_platform = "== 'win32'" }
-pywin32-ctypes = { sys_platform = "== 'win32'" }
+pywin32 = { version = "*", markers="sys_platform == 'win32'" }
+pywin32-ctypes = { version = "*", markers="sys_platform == 'win32'" }
 pyyaml = "*"
 scipy = "*"
 sentry-sdk = "*"
 sqlalchemy = "*"
 yoctopuce = "*"
 pyvisa-py = "*"
-gpib-ctypes = { sys_platform = "== 'win32'" }
+gpib-ctypes = { version = "*", markers="sys_platform == 'win32'" }
 
 [dev-packages]
 alembic = "*"

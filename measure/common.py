@@ -4,21 +4,14 @@ import click
 import pandas as pd
 from jsonpath_ng import parse
 from pyvisa.resources import GPIBInstrument
-from sqlalchemy.orm import joinedload
 
-from orm import (
-    Chip,
-    Wafer,
-)
 from utils import (
     from_context,
-    get_or_create_chips,
-    get_or_create_wafer,
 )
 
 
 @from_context("instruments.main", "instrument")
-def set_configs(commands: list[str], instrument: GPIBInstrument):
+def apply_configs(commands: list[str], instrument: GPIBInstrument):
     for command in commands:
         instrument.write(command)
 
@@ -86,10 +79,3 @@ def _validate_measurements(
                 else:
                     raise ValueError(f"Unknown validator {validator_name}")
     return None
-
-
-@from_context("session", "session")
-def get_chips_for_names(chip_names, wafer_name, session) -> list[Chip]:
-    wafer = get_or_create_wafer(wafer_name, session=session, query_options=joinedload(Wafer.chips))
-    chips = get_or_create_chips(wafer, chip_names)
-    return chips

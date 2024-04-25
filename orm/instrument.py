@@ -7,6 +7,7 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 
+from .abstract_repository import AbstractRepository
 from .base import Base
 
 
@@ -18,3 +19,7 @@ class Instrument(Base):
     
     def __repr__(self):
         return "<Instrument(name='%s', id='%d')>" % (self.name, self.id)
+
+
+class InstrumentRepository(AbstractRepository[Instrument]):
+    model = Instrument

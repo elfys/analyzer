@@ -12,6 +12,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+from .abstract_repository import AbstractRepository
 from .base import Base
 
 
@@ -29,3 +30,7 @@ class Wafer(Base):
     
     def __repr__(self):
         return "<Wafer(name='%s', id='%d')>" % (self.name, self.id)
+
+
+class WaferRepository(AbstractRepository[Wafer]):
+    model = Wafer

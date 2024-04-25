@@ -13,6 +13,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+from . import AbstractRepository
 from .base import Base
 
 
@@ -63,3 +64,6 @@ class IvConditions(Base):
     
     def __repr__(self):
         return f"<IvConditions(id={self.id}, datetime={self.datetime}>"
+
+class IvConditionsRepository(AbstractRepository[IvConditions]):
+    model = IvConditions

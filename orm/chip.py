@@ -15,11 +15,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import (
     Mapped,
+    joinedload,
     mapped_column,
     relationship,
     validates,
 )
 
+from .abstract_repository import AbstractRepository
 from .base import Base
 
 
@@ -147,3 +149,22 @@ class Chip(Base):
     
     def __repr__(self):
         return f"<Chip(id={self.id} name='{self.name}')>"
+
+
+class ChipRepository(AbstractRepository[Chip]):
+    model = Chip
+    
+    def get_chips_for_names(self, chip_names, wafer_name) -> list[Chip]:
+        from .wafer import (
+            Wafer,
+            WaferRepository,
+        )
+        chip_names = {name.upper() for name in chip_names}
+        wafer_repo = WaferRepository(self.session)
+        wafer = wafer_repo.get_or_create(name=wafer_name, query_options=joinedload(Wafer.chips))
+        existing_chip_names = {chip.name.upper() for chip in wafer.chips}
+        chip_names_to_create = chip_names - existing_chip_names
+        
+        for chip_name in chip_names_to_create:
+            self.create(name=chip_name, wafer=wafer)
+        return [c for c in wafer.chips if c.name.upper() in chip_names]

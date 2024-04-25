@@ -86,19 +86,32 @@ def measure_iv_command(
 
 
 @from_context("instruments.scanner", "scanner")
+@from_context("session", "session")
 def measure_matrix(
     automatic,
     chips,
     setup_config,
-    conditions_kwargs, scanner: PyVisaInstrument,
+    conditions_kwargs,
+    scanner: PyVisaInstrument,
+    session: Session,
 ):
     scanner.write("RX")  # open all channels
     
     for i, chip in enumerate(chips, start=1):
         scanner.write(f"B{i}C{i}X")  # close and display channel
         sleep(0.1)  # wait for the channel to open
-        measure_setup(automatic, [chip], setup_config, conditions_kwargs)
+        
+        try:
+            measure_setup(automatic, [chip], setup_config, conditions_kwargs)
+        except RuntimeError as e:
+            if str(e) == "Measurement is invalid":
+                if automatic:
+                    ...  # do nothing, measure next pixel
+                else:
+                    click.confirm(
+                        "Do you want to continue measuring other pixels?", abort=True, default=True)
         scanner.write("RX")  # open all channels
+        session.commit()  # commit after each chip
 
 
 @from_context("instruments.temperature", "thermometer")

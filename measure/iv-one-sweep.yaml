@@ -46,7 +46,7 @@ setups:
       - "smua.measure.autozero = smua.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
       - "smua.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
       - "vlist = {0.01,0,-0.01,-10,-6,-2,-1,1}" # sets the voltage list
-      - "points = 8" # counts the point
+      - "points = table.getn(vlist)" # counts the point
       #- "stime = 200e-3" # time delay between points
 
       # Buffer

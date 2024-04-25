@@ -64,7 +64,7 @@ setups:
       - "smub.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
 
       - "vlist = {0.01,0,-0.01}" # sets the voltage list
-      - "points = 3" # counts the point
+      - "points = table.getn(vlist)" # counts the point
 
       # Set the sweep timer
       - "trigger.timer[1].reset()"
@@ -118,7 +118,7 @@ setups:
       - "smub.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
 
       - "vlist = {-20,-15,-12,-10,-6,0,1}" # sets the voltage list
-      - "points = 7" # counts the point
+      - "points = table.getn(vlist)" # counts the point
 
       # Set the sweep timer
       - "trigger.timer[1].reset()"

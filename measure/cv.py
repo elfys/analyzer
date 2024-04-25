@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from orm import (
     CVMeasurement,
+    ChipRepository,
     ChipState,
 )
 from utils import (
@@ -10,9 +11,8 @@ from utils import (
     validate_chip_names,
 )
 from .common import (
-    get_chips_for_names,
+    apply_configs,
     get_raw_measurements,
-    set_configs,
     validate_measurements,
 )
 
@@ -50,12 +50,11 @@ def cv(
 ):
     session: Session = ctx.obj["session"]
     configs: dict = ctx.obj["configs"]
-    
-    chips = get_chips_for_names(chip_names, wafer_name)
+    chips = ChipRepository(session).get_chips_for_names(chip_names, wafer_name)
     
     for setup_config in configs["setups"]:
         ctx.obj["logger"].info(f'Executing setup {setup_config["name"]}')
-        set_configs(setup_config["instrument"])
+        apply_configs(setup_config["instrument"])
         raw_measurements = get_raw_measurements()
         
         validate_measurements(raw_measurements, setup_config, automatic_mode)

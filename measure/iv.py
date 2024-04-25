@@ -6,10 +6,11 @@ import numpy as np
 from sqlalchemy.orm import Session
 
 from orm import (
+    ChipRepository,
     ChipState,
     IVMeasurement,
-    Instrument,
-    IvConditions,
+    InstrumentRepository,
+    IvConditionsRepository,
 )
 from utils import (
     EntityOption,
@@ -17,9 +18,8 @@ from utils import (
     validate_chip_names,
 )
 from .common import (
-    get_chips_for_names,
+    apply_configs,
     get_raw_measurements,
-    set_configs,
     validate_measurements,
 )
 from .instrument import (
@@ -65,16 +65,12 @@ def measure_iv_command(
     logger: logging.Logger,
     configs: dict,
 ):
-    instrument_id, = (
-        session.query(Instrument.id)
-        .filter(Instrument.name == instrument_name)
-        .first()
-    )
-    chips = get_chips_for_names(chip_names, wafer_name)
+    instrument_id = InstrumentRepository(session).get_id(name=instrument_name)
+    chips = ChipRepository(session).get_chips_for_names(chip_names, wafer_name)
     
     for setup_config in configs["setups"]:
         logger.info(f'Executing setup {setup_config["name"]}')
-        set_configs(setup_config["instrument"])
+        apply_configs(setup_config["instrument"])
         conditions_kwargs = {
             "instrument_id": instrument_id,
             "chip_state_id": chip_state.id,
@@ -129,12 +125,12 @@ def measure_setup(
         raw_measurements = get_raw_measurements()
     validate_measurements(raw_measurements, setup_config, automatic)
     
+    iv_cond_repo = IvConditionsRepository(session)
     for chip, chip_config in zip(chips, chip_configs, strict=True):
-        conditions = IvConditions(chip=chip, temperature=temperature, **conditions_kwargs)
-        conditions.measurements = create_measurements(
-            raw_measurements, temperature, chip_config,
+        iv_cond_repo.create(
+            chip=chip, temperature=temperature, **conditions_kwargs,
+            measurements=create_measurements(raw_measurements, temperature, chip_config),
         )
-        session.add(conditions)  # thus, chip/wafer etc will be added to session indirectly
 
 
 @from_context("configs.instruments.main", "instrument_config")
@@ -159,9 +155,7 @@ def create_measurements(
         if instrument_config.get("invert_voltage", False):
             measurement_kwargs["voltage_input"] *= -1
         
-        # measurements.append(IVMeasurement(**measurement_kwargs))
-        m = IVMeasurement(**measurement_kwargs)
-        measurements.append(m)
+        measurements.append(IVMeasurement(**measurement_kwargs))
     return measurements
 
 

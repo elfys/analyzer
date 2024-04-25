@@ -14,13 +14,13 @@ import pandas as pd
 import sentry_sdk
 from sqlalchemy.orm import (
     Session,
-    joinedload,
 )
 
 from orm import (
     CVMeasurement,
     Carrier,
     Chip,
+    ChipRepository,
     ChipState,
     EqeConditions,
     EqeMeasurement,
@@ -31,16 +31,14 @@ from orm import (
     TsConditions,
     TsMeasurement,
     Wafer,
+    WaferRepository,
 )
 from utils import (
     eqe_defaults,
+    from_context,
     remember_choice,
     select_one,
     validate_files_glob,
-)
-from utils.getters_or_creators import (
-    get_or_create_chips,
-    get_or_create_wafer,
 )
 
 
@@ -91,12 +89,14 @@ def parse_cv(ctx: click.Context, file_paths: tuple[Path]):
 @click.pass_context
 def parse_ts(ctx: click.Context, file_paths: tuple[Path]):
     session = ctx.obj["session"]
+    wafer_name = ask_wafer_name()
+    wafer = WaferRepository(session).get_or_create(name=wafer_name)
+    if not wafer.id:
+        confirm_wafer_creation(wafer)
     
-    wafer = get_or_create_wafer(session=session)
     ctx.obj["logger"].info(f"{wafer.name} will be used for every parsed measurement")
     chip_name = ask_chip_name()
-    chip = get_or_create_chips(wafer, [chip_name])[0]
-    chip.test_structure = True
+    chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer, test_structure=True)
     
     for file_path in file_paths:
         with parsing_file(file_path, ctx):
@@ -186,28 +186,27 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
     return conditions
 
 
-def guess_chip_and_wafer(filename: str, prefix: str, session: Session) -> tuple[Chip, Wafer]:
+@from_context("logger", "logger")
+def guess_chip_and_wafer(filename: str, prefix: str, session: Session, logger) -> tuple[
+    Chip, Wafer]:
     matcher = re.compile(rf"^{prefix}\s+(?P<wafer>[\w\d]+)\s+(?P<chip>[\w\d-]+)(\s.*)?\..*$", re.I)
     match = matcher.match(filename)
     
     if match is None:
         chip_name = None
         wafer_name = None
-        click.get_current_context().obj["logger"].warning(
-            "Could not guess chip and wafer from filename"
-        )
+        logger.warning("Could not guess chip and wafer from filename")
     else:
         chip_name = match.group("chip").upper()
         wafer_name = match.group("wafer").upper()
-        click.get_current_context().obj["logger"].info(
-            f"Guessed from filename: wafer={wafer_name}, chip={chip_name}"
-        )
+        logger.info(f"Guessed from filename: wafer={wafer_name}, chip={chip_name}")
     
-    wafer = get_or_create_wafer(
-        default=wafer_name, session=session, query_options=joinedload(Wafer.chips)
-    )
-    chip_name = ask_chip_name(chip_name)
-    chip = get_or_create_chips(wafer, [chip_name])[0]
+    wafer_name = ask_wafer_name(default=wafer_name)
+    wafer = WaferRepository(session).get_or_create(name=wafer_name)
+    if not wafer.id:
+        confirm_wafer_creation(wafer)
+    chip_name = ask_chip_name(default=chip_name)
+    chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer)
     
     return chip, wafer
 
@@ -217,6 +216,30 @@ def ask_chip_name(default: str = None) -> str:
     while chip_name is None:
         chip_name = click.prompt("Input chip name", default=default, show_default=True)
     return chip_name.upper()
+
+
+def ask_wafer_name(default: str = None) -> str:
+    wafer_name = click.prompt(
+        f"Input wafer name ({'press Enter to confirm default value ' if default else ''}or type 'skip' or 'exit')",
+        type=str,
+        default=default,
+        show_default=True,
+    ).upper()
+    if wafer_name == "SKIP":
+        raise click.Abort()
+    if wafer_name == "EXIT":
+        click.get_current_context().exit(0)
+    return wafer_name
+
+
+@from_context("session", "session")
+def confirm_wafer_creation(wafer, session: Session):
+    click.confirm(
+        f"There is no wafers with name={wafer.name} in the database. Do you want to create one?",
+        default=True,
+        abort=True,
+    )
+    session.flush([wafer])  # force id generation
 
 
 def ask_session(timestamp: datetime, session: Session) -> EqeSession:

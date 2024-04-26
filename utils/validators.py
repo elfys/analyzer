@@ -26,7 +26,6 @@ def validate_chip_names(ctx, param, chip_names: list[str]):
     if "matrix" in configs:
         if len(chip_names) != 1:
             raise click.BadParameter("Matrix measurement requires exactly one chip name")
-        chip_names = [f"{chip_names[0]}_{i + 1}" for i in range(configs["matrix"])]
     else:
         if len(set(chip_names)) != len(chip_names):
             raise ValueError("Chip names must be unique")

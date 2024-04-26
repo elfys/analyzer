@@ -12,6 +12,10 @@ from orm import (
     InstrumentRepository,
     IvConditionsRepository,
 )
+from orm.matrix import (
+    Matrix,
+    MatrixRepository,
+)
 from utils import (
     EntityOption,
     from_context,
@@ -66,7 +70,13 @@ def measure_iv_command(
     configs: dict,
 ):
     instrument_id = InstrumentRepository(session).get_id(name=instrument_name)
-    chips = ChipRepository(session).get_chips_for_names(chip_names, wafer_name)
+    if (matrix_config := configs.get("matrix")) is not None:
+        matrix = MatrixRepository(session).get_or_create_from_configs(
+            matrix_name=chip_names[0], wafer_name=wafer_name, matrix_config=matrix_config
+        )
+    else:
+        chips = ChipRepository(session).get_chips_for_names(chip_names, wafer_name)
+    session.commit()
     
     for setup_config in configs["setups"]:
         logger.info(f'Executing setup {setup_config["name"]}')
@@ -77,8 +87,8 @@ def measure_iv_command(
             **setup_config["program"]["condition_kwargs"]
         }
         
-        if "matrix" in configs:
-            measure_matrix(automatic, chips, setup_config, conditions_kwargs)
+        if (matrix := locals().get('matrix')) is not None:
+            measure_matrix(matrix, automatic, setup_config, conditions_kwargs)
         else:
             measure_setup(automatic, chips, setup_config, conditions_kwargs)
     session.commit()
@@ -87,16 +97,16 @@ def measure_iv_command(
 
 @from_context("instruments.scanner", "scanner")
 @from_context("session", "session")
-def measure_matrix(
+def measure_matrix(  # chip_names[0], wafer_name,automatic,  setup_config, conditions_kwargs
+    matrix: Matrix,
     automatic,
-    chips,
     setup_config,
     conditions_kwargs,
     scanner: PyVisaInstrument,
     session: Session,
 ):
     scanner.write("RX")  # open all channels
-    
+    chips = sorted(matrix.chips, key=lambda c: c.name)
     for i, chip in enumerate(chips, start=1):
         scanner.write(f"B{i}C{i}X")  # close and display channel
         sleep(0.1)  # wait for the channel to open

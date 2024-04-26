@@ -2,6 +2,7 @@ import functools
 import re
 from typing import (
     List,
+    Optional,
     Union,
 )
 
@@ -100,6 +101,11 @@ class Chip(Base):
     eqe_conditions: Mapped[List["EqeConditions"]] = relationship(  # noqa: F821
         back_populates="chip"
     )
+    matrix_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("matrix.id", name="chip__matrix", ondelete="CASCADE", onupdate="CASCADE"),
+        index=True,
+    )
+    matrix: Mapped["Matrix"] = relationship(back_populates="chips")  # noqa: F821
     
     @validates("name")
     def validate_name(self, key: str, name: str) -> str:

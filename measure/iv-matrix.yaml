@@ -20,7 +20,9 @@ instruments:
     kind: 'pyvisa'
 
 
-matrix: 9
+matrix:
+  width: 3
+  height: 3
 
 measure:
   # turn on the current

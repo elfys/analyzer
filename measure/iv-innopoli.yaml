@@ -37,6 +37,9 @@ setups:
   - name: 0.01v sweep
     instrument:
       - "reset()" # resets commands to their default settings
+      - "vlist = {0.01, 0.008, 0.006, 0.004, 0.002, 0, -0.002, -0.004, -0.006, -0.008, -0.01}" # sets the voltage list
+      - "points = table.getn(vlist)" # counts the point
+
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function
       - "smua.source.autorangev = smua.AUTORANGE_ON" # enables voltage source autorange
       - "smua.source.autorangei = smua.AUTORANGE_ON" # enables current source autorange (delete?)
@@ -45,8 +48,6 @@ setups:
       - "smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "smua.measure.autozero = smua.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
       - "smua.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
-      - "vlist = {0.01, 0.008, 0.006, 0.004, 0.002, 0, -0.002, -0.004, -0.006, -0.008, -0.01}" # sets the voltage list
-      - "points = table.getn(vlist)" # counts the point
       #- "stime = 200e-3" # time delay between points
 
       # Buffer
@@ -74,6 +75,9 @@ setups:
   - name: 10v points
     instrument:
       - "reset()" # resets commands to their default settings
+      - "vlist = {-10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2}" # sets the voltage list
+      - "points = table.getn(vlist)" # counts the point
+
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function
       - "smua.source.autorangev = smua.AUTORANGE_ON" # enables voltage source autorange
       - "smua.source.autorangei = smua.AUTORANGE_ON" # enables current source autorange (delete?)
@@ -82,8 +86,6 @@ setups:
       - "smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "smua.measure.autozero = smua.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
       - "smua.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
-      - "vlist = {-10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2}" # sets the voltage list
-      - "points = table.getn(vlist)" # counts the point
       #- "stime = 200e-3" # time delay between points
 
       # Buffer

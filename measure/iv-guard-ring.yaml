@@ -45,6 +45,9 @@ setups:
   - name: 0.01v points
     instrument:
       - "reset()" # resets commands to their default settings
+      - "vlist = {0.01,0,-0.01}" # sets the voltage list
+      - "points = table.getn(vlist)" # counts the point
+
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function
       - "smua.source.autorangev = smua.AUTORANGE_ON" # enables voltage source autorange
       - "smua.source.limiti = 10e-3" # comlience limit
@@ -62,9 +65,6 @@ setups:
       - "smub.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "smub.measure.autozero = smub.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
       - "smub.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
-
-      - "vlist = {0.01,0,-0.01}" # sets the voltage list
-      - "points = table.getn(vlist)" # counts the point
 
       # Set the sweep timer
       - "trigger.timer[1].reset()"
@@ -100,6 +100,9 @@ setups:
   - name: 10v points
     instrument:
       - "reset()" # resets commands to their default settings
+      - "vlist = {-20,-15,-12,-10,-6,0,1}" # sets the voltage list
+      - "points = table.getn(vlist)" # counts the point
+
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function
       - "smua.source.autorangev = smua.AUTORANGE_ON" # enables voltage source autorange
       - "smua.source.output = smua.OUTPUT_ON" # turn on the output in preparation for the sweep
@@ -116,9 +119,6 @@ setups:
       - "smub.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "smub.measure.autozero = smub.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
       - "smub.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
-
-      - "vlist = {-20,-15,-12,-10,-6,0,1}" # sets the voltage list
-      - "points = table.getn(vlist)" # counts the point
 
       # Set the sweep timer
       - "trigger.timer[1].reset()"

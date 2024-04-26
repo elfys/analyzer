@@ -59,7 +59,7 @@ def measure_group(
     ctx.obj["configs"] = configs
     
     try:
-        if db_url is None and not os.environ.get("DEV", False):
+        if db_url is None:
             db_url = get_db_url()
         engine = create_engine(db_url, echo="debug" if debug else False)
         session = Session(bind=engine, autoflush=False, autocommit=False, future=True)

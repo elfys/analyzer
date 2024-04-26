@@ -1,5 +1,4 @@
 import click
-from pyvisa.resources import GPIBInstrument
 from sqlalchemy.orm import Session
 
 from orm import (
@@ -8,6 +7,7 @@ from orm import (
 )
 from utils import (
     EntityOption,
+    validate_chip_names,
 )
 from .common import (
     get_chips_for_names,
@@ -19,7 +19,12 @@ from .common import (
 
 @click.command(name="cv", help="Measure CV data of the current chip.")
 @click.pass_context
-@click.option("-n", "--chip-name", "chip_names", help="Chip name.", multiple=True)
+@click.option("-n",
+              "--chip-name",
+              "chip_names",
+              help="Chip name.",
+              multiple=True,
+              callback=validate_chip_names)
 @click.option("-w", "--wafer", "wafer_name", prompt="Input wafer name", help="Wafer name.")
 @click.option(
     "-s",
@@ -43,24 +48,23 @@ def cv(
     chip_state: ChipState,
     automatic_mode: bool,
 ):
-    instrument: GPIBInstrument = ctx.obj["instrument"]
     session: Session = ctx.obj["session"]
     configs: dict = ctx.obj["configs"]
     
-    chips = get_chips_for_names(chip_names, wafer_name, len(configs["chips"]), session)
+    chips = get_chips_for_names(chip_names, wafer_name)
     
-    for measurement_config in configs["measurements"]:
-        ctx.obj["logger"].info(f'Executing measurement {measurement_config["name"]}')
-        set_configs(measurement_config["instrument"])
-        raw_measurements = get_raw_measurements(configs["measure"])
+    for setup_config in configs["setups"]:
+        ctx.obj["logger"].info(f'Executing setup {setup_config["name"]}')
+        set_configs(setup_config["instrument"])
+        raw_measurements = get_raw_measurements()
         
-        validate_measurements(raw_measurements, measurement_config, automatic_mode)
+        validate_measurements(raw_measurements, setup_config, automatic_mode)
         
         for chip, chip_config in zip(chips, configs["chips"], strict=True):
             measurements_kwargs = dict(
                 chip_state_id=chip_state.id,
                 chip=chip,
-                **measurement_config["program"]["measurements_kwargs"],
+                **setup_config["program"]["measurements_kwargs"],
             )
             measurements = create_measurements(raw_measurements, chip_config, **measurements_kwargs)
             session.add_all(measurements)

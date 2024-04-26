@@ -95,7 +95,7 @@ def parse_ts(ctx: click.Context, file_paths: tuple[Path]):
     wafer = get_or_create_wafer(session=session)
     ctx.obj["logger"].info(f"{wafer.name} will be used for every parsed measurement")
     chip_name = ask_chip_name()
-    chip = get_or_create_chips(session, wafer, [chip_name])[0]
+    chip = get_or_create_chips(wafer, [chip_name])[0]
     chip.test_structure = True
     
     for file_path in file_paths:
@@ -207,7 +207,7 @@ def guess_chip_and_wafer(filename: str, prefix: str, session: Session) -> tuple[
         default=wafer_name, session=session, query_options=joinedload(Wafer.chips)
     )
     chip_name = ask_chip_name(chip_name)
-    chip = get_or_create_chips(session, wafer, [chip_name])[0]
+    chip = get_or_create_chips(wafer, [chip_name])[0]
     
     return chip, wafer
 

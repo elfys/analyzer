@@ -51,8 +51,8 @@ def cv(
     
     for measurement_config in configs["measurements"]:
         ctx.obj["logger"].info(f'Executing measurement {measurement_config["name"]}')
-        set_configs(instrument, measurement_config["instrument"])
-        raw_measurements = get_raw_measurements(instrument, configs["measure"])
+        set_configs(measurement_config["instrument"])
+        raw_measurements = get_raw_measurements(configs["measure"])
         
         validate_measurements(raw_measurements, measurement_config, automatic_mode)
         

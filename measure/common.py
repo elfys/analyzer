@@ -88,12 +88,8 @@ def _validate_measurements(
     return None
 
 
-def get_chips_for_names(chip_names, wafer_name, chips_number, session) -> list[Chip]:
-    if len({c.upper() for c in chip_names}) != len(chip_names):
-        raise ValueError("Chip names must be unique")
-    if chips_number != len(chip_names):
-        raise ValueError(f"{chips_number} chip names expected, based on provided config file")
-    
+@from_context("session", "session")
+def get_chips_for_names(chip_names, wafer_name, session) -> list[Chip]:
     wafer = get_or_create_wafer(wafer_name, session=session, query_options=joinedload(Wafer.chips))
     chips = get_or_create_chips(wafer, chip_names)
     return chips

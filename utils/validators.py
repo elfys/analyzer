@@ -20,6 +20,23 @@ def validate_wafer_name(ctx, param, wafer_name: str):
     return wafer_name
 
 
+def validate_chip_names(ctx, param, chip_names: list[str]):
+    configs = ctx.obj["configs"]
+    chip_names = [name.upper() for name in chip_names]
+    if "matrix" in configs:
+        if len(chip_names) != 1:
+            raise click.BadParameter("Matrix measurement requires exactly one chip name")
+        chip_names = [f"{chip_names[0]}_{i + 1}" for i in range(configs["matrix"])]
+    else:
+        if len(set(chip_names)) != len(chip_names):
+            raise ValueError("Chip names must be unique")
+        expected_chips_number = len(configs["chips"])
+        if len(chip_names) != expected_chips_number:
+            raise ValueError(f"{expected_chips_number} chip names expected, based on provided config file ({len(chip_names)} names given)")
+    
+    return tuple(chip_names)
+
+
 def validate_files_glob(ctx, param, value: str):
     if Path(value).is_dir():
         raise click.BadParameter(

@@ -14,6 +14,7 @@ from orm import (
 from utils import (
     EntityOption,
     from_context,
+    validate_chip_names,
 )
 from .common import (
     get_chips_for_names,
@@ -28,7 +29,12 @@ from .instrument import (
 
 
 @click.command(name="iv", help="Measure IV data of the current chip.")
-@click.option("-n", "--chip-name", "chip_names", help="Chip name.", multiple=True)
+@click.option("-n",
+              "--chip-name",
+              "chip_names",
+              help="Chip name.",
+              multiple=True,
+              callback=validate_chip_names)
 @click.option("-w", "--wafer", "wafer_name", prompt="Input wafer name", help="Wafer name.")
 @click.option(
     "-s",
@@ -64,11 +70,10 @@ def measure_iv_command(
         .filter(Instrument.name == instrument_name)
         .first()
     )
-    
-    chips = get_chips_for_names(chip_names, wafer_name, len(configs["chips"]), session)
+    chips = get_chips_for_names(chip_names, wafer_name)
     
     for setup_config in configs["setups"]:
-        logger.info(f'Executing measurement {setup_config["name"]}')
+        logger.info(f'Executing setup {setup_config["name"]}')
         set_configs(setup_config["instrument"])
         conditions_kwargs = {
             "instrument_id": instrument_id,
@@ -85,20 +90,25 @@ def measure_iv_command(
 
 
 @from_context("instruments.scanner", "scanner")
-@from_context("configs.matrix", "matrix_config")
-def measure_matrix(*measure_args, scanner: PyVisaInstrument, matrix_config):
+def measure_matrix(
+    automatic,
+    chips,
+    setup_config,
+    conditions_kwargs, scanner: PyVisaInstrument,
+):
     scanner.write("RX")  # open all channels
     
-    for i in np.arange(matrix_config["start"], matrix_config["stop"]):
+    for i, chip in enumerate(chips, start=1):
         scanner.write(f"B{i}C{i}X")  # close and display channel
-        sleep(0.1)  # wait for the channel to open, just in case
-        measure_setup(*measure_args)
+        sleep(0.1)  # wait for the channel to open
+        measure_setup(automatic, [chip], setup_config, conditions_kwargs)
         scanner.write("RX")  # open all channels
 
 
 @from_context("instruments.temperature", "thermometer")
 @from_context("session", "session")
 @from_context("configs.chips", "chip_configs")
+@from_context("logger", "logger")
 def measure_setup(
     automatic,
     chips,
@@ -107,10 +117,12 @@ def measure_setup(
     chip_configs,
     session: Session,
     thermometer: TemperatureInstrument,
+    logger: logging.Logger,
 ):
     temperature = thermometer.get_temperature()
     validate_temperature(temperature, automatic)
     
+    logger.info(f"Measuring {', '.join([c.name for c in chips])}")
     if setup_config["program"].get("minimum", False):
         raw_measurements = get_minimal_measurements()
     else:

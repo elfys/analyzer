@@ -2,14 +2,16 @@ import logging
 import sys
 from logging.config import fileConfig
 
-from orm import Base
-
 import click
 from alembic import context
-from sqlalchemy import create_engine, engine_from_config
+from sqlalchemy import (
+    create_engine,
+    engine_from_config,
+)
 from sqlalchemy.engine import URL
 
 from analyzer.db import dump_db
+from orm import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -42,7 +44,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
-
+    
     with context.begin_transaction():
         context.run_migrations()
 
@@ -55,7 +57,7 @@ def run_migrations_online() -> None:
 
     """
     x_args = context.get_x_argument(as_dictionary=True)
-
+    
     if "connection" in context.config.attributes:
         # pytest-alembic
         engine = context.config.attributes["connection"]
@@ -73,11 +75,13 @@ def run_migrations_online() -> None:
             sys.exit(db_url_or_error_code)
         engine = create_engine(db_url_or_error_code)
     else:
+        engine_config = config.get_section(config.config_ini_section)
         engine = engine_from_config(
-            config.get_section(config.config_ini_section),
+            engine_config,
             prefix="sqlalchemy.",
+            url=x_args.get("db_url", engine_config["sqlalchemy.url"])
         )
-
+    
     with engine.begin() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():  # mysql doesn't support DDL transactions anyway =(

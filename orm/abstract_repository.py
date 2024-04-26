@@ -40,3 +40,6 @@ class AbstractRepository(Generic[T]):
     
     def get_all(self) -> list[T]:
         return self.session.query(self.model).all()
+    
+    def get_all_by(self, order_by=None, **kwargs) -> list[T]:
+        return self.session.query(self.model).filter_by(**kwargs).order_by(order_by).all()

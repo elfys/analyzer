@@ -10,6 +10,7 @@ from .eqe_session import EqeSession
 from .instrument import *
 from .iv_conditions import *
 from .iv_measurement import IVMeasurement
+from .matrix import Matrix
 from .misc import Misc
 from .ts_conditions import TsConditions
 from .ts_measurement import TsMeasurement

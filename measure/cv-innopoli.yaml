@@ -1,8 +1,9 @@
 # Configs for a single chip CV measurement on ??? (Innopoli)
 
 instruments:
-  pyvisa:
+  main:
     resource: "GPIB0::17::INSTR"
+    kind: "pyvisa"
     name: "Keithley SMU E4980 (Innopoli)"
     kwargs:
       timeout: 15000
@@ -28,7 +29,7 @@ chips:
       slice: [ null, null, 4 ]
 
 
-measurements:
+setups:
   - name: "-35v to 0v by 5v"
     instrument:
       - "*RST; *CLS"

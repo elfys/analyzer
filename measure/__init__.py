@@ -3,21 +3,21 @@ import os
 from typing import Union
 
 import click
-import pyvisa
 import sentry_sdk
 import yaml
-from pyvisa import Error
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from utils import get_db_url
 from .cv import cv
-from .instrument import Instrument
-from .iv import measure_iv
+from .instrument import (
+    InstrumentFactory,
+)
+from .iv import measure_iv_command
 
 
-@click.group(name="measure", commands=[measure_iv, cv])
+@click.group(name="measure", commands=[measure_iv_command, cv])
 @click.pass_context
 @click.option(
     "-c",
@@ -37,11 +37,11 @@ from .iv import measure_iv
 @click.option("--db-url", help="Database URL.", default=os.environ.get("DB_URL"))
 @click.option("--simulate", is_flag=True, help="Simulate pyvisa instrument.", default=False)
 def measure_group(
-        ctx: click.Context,
-        config_path: str,
-        log_level: str,
-        db_url: Union[str, None],
-        simulate: bool,
+    ctx: click.Context,
+    config_path: str,
+    log_level: str,
+    db_url: Union[str, None],
+    simulate: bool,
 ):
     ctx.obj = ctx.obj or {}
     if "logger" in ctx.obj:
@@ -56,7 +56,6 @@ def measure_group(
     with click.open_file(config_path) as config_file:
         configs = yaml.safe_load(config_file)
     
-    ctx.obj["simulate"] = simulate
     ctx.obj["configs"] = configs
     
     try:
@@ -77,26 +76,9 @@ def measure_group(
             sentry_sdk.capture_exception(e)
         ctx.exit(1)
     
-    try:
-        if simulate:
-            rm = pyvisa.ResourceManager("measure/simulation.yaml@sim")
-            instrument = Instrument(rm, {
-                "resource": "GPIB0::9::INSTR",
-                "name": "simulation",
-                "kwargs": {
-                    "write_termination": "\n",
-                    "read_termination": "\n"
-                }
-            })
-        else:
-            pyvisa_config = configs["instruments"]["pyvisa"]
-            rm = pyvisa.ResourceManager()
-            instrument = Instrument(rm, pyvisa_config)
-        
+    instrument_factory = InstrumentFactory()
+    ctx.obj["instruments"] = {}
+    for key, instrument_config in configs["instruments"].items():
+        instrument = instrument_factory(instrument_config, simulate)
         ctx.with_resource(instrument)
-    except Error as e:
-        logger.error(f"PYVISA error: {e}")
-        ctx.exit()
-        return
-    
-    ctx.obj["instrument"] = instrument
+        ctx.obj["instruments"][key] = instrument

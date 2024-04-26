@@ -6,6 +6,13 @@ devices:
         q: "\n"
         r: "\n"
     dialogues:
+      # - q: ":DATA? 'V4'"
+      # - q: ":DATA? 'I1'"
+      # - q: ":DATA? 'I2'"
+      # - q: ":DATA? 'I3'"
+      # - q: ":DATA? 'I4'"
+
+
       - q: "*IDN?"
         r: "GPIB MOCK"
       - q: "*OPC?"

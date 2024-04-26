@@ -1,10 +1,14 @@
 # WARNING! This configuration was not tested!
 
 instruments:
-  temperature_resource: "PT100MK1-14A17C.temperature"
-  pyvisa:
+  temperature:
+    resource: "PT100MK1-14A17C.temperature"
+    name: "Temperature sensor"
+    kind: "temperature"
+  main:
     name: "Keithley SMU 4156 (Micronova)"
     resource: "GPIB0::15::INSTR"
+    kind: "pyvisa"
     kwargs:
       timeout: 250000
 
@@ -41,7 +45,7 @@ chips:
     anode_current: anode_current_3
     cathode_current: cathode_current
 
-measurements:
+setups:
   - name: 0.01v sweep
     instrument:
       - "*CLS" # clears the Error Queue
@@ -91,7 +95,7 @@ measurements:
             value: !!float 1e-9
             message: Current leakage is too high. Check if there is a light exposure.
             abs: true
-      measurements_kwargs:
+      condition_kwargs:
         int_time: SHORT
 
   - name: 20v sweep
@@ -138,6 +142,6 @@ measurements:
             value: !!float 5e-3
             message: Current leakage is too low. Check if there is a good contact.
             abs: true
-      measurements_kwargs:
+      condition_kwargs:
         int_time: MED
 

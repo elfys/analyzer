@@ -37,7 +37,8 @@ def upgrade() -> None:
     INSERT INTO `instrument` (name) VALUES
         ('EPG'),
         ('Keithley SMU 2636 (Innopoli)'),
-        ('Keithley SMU 4156 (Micronova)');
+        ('Keithley SMU 4156 (Micronova)'),
+        ('Keithley SMU 2636 (Innopoli U2)');
     """
         )
     )

@@ -75,6 +75,23 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["-c", ".\\measure\\iv-guard-ring.yaml", "iv", "-w", "Test", "-s", "1", "-n", "X0101"]
+        },
+        {
+            "name": "Measure IV matrix",
+            "type": "python",
+            "request": "launch",
+            "module": "measure",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["-c", ".\\measure\\iv-matrix.yaml", "iv", "-w", "Test", "-s", "1", "-n", "X0101"]
+        },
+        {
+            "name": "Measure matrix",
+            "type": "python",
+            "request": "launch",
+            "program": "measure\\matrix.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }

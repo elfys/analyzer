@@ -16,7 +16,7 @@ class Instrument:
         self.resource = self.rm.open_resource(self.config["resource"], **self.config["kwargs"])
         
         if 'SMU 2636' in self.name:
-            self.resource.write("errorqueue.clear()")
+            self.check_errors(self.resource)
         # TODO: clear errors for other instruments
         
         return self

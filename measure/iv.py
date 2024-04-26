@@ -21,6 +21,10 @@ from .common import (
     set_configs,
     validate_measurements,
 )
+from .instrument import (
+    PyVisaInstrument,
+    TemperatureInstrument,
+)
 
 
 @click.command(name="iv", help="Measure IV data of the current chip.")
@@ -82,7 +86,7 @@ def measure_iv_command(
 
 @from_context("instruments.scanner", "scanner")
 @from_context("configs.matrix", "matrix_config")
-def measure_matrix(*measure_args, scanner, matrix_config):
+def measure_matrix(*measure_args, scanner: PyVisaInstrument, matrix_config):
     scanner.write("RX")  # open all channels
     
     for i in np.arange(matrix_config["start"], matrix_config["stop"]):
@@ -102,7 +106,7 @@ def measure_setup(
     conditions_kwargs,
     chip_configs,
     session: Session,
-    thermometer,
+    thermometer: TemperatureInstrument,
 ):
     temperature = thermometer.get_temperature()
     validate_temperature(temperature, automatic)

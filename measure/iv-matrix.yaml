@@ -3,14 +3,24 @@
 # SMU A - common cathode
 
 instruments:
-  temperature_resource: "PT100MK1-1DCBA1.temperature"
-  pyvisa:
+  temperature:
+    resource: "PT100MK1-1DCBA1.temperature"
+    name: "Temperature sensor"
+    kind: "temperature"
+  main:
     resource: "GPIB0::26::INSTR"
     name: "Keithley SMU 2636 (Innopoli U2)"
+    kind: "pyvisa"
 #    invert_voltage: true # NO, the instrument is connected such that the voltage is not inverted
     kwargs:
-      timeout: 10000
+      timeout: 200000 # 200s
+  scanner:
+    resource: 'GPIB0::15::INSTR'
+    name: 'Scanner 705'
+    kind: 'pyvisa'
 
+
+matrix: 9
 
 measure:
   # turn on the current
@@ -56,7 +66,7 @@ chips:
     cathode_current: common_cathode_current
 
 
-measurements:
+setups:
   - name: 0.01v
     instrument:
       - "reset()"
@@ -71,7 +81,7 @@ measurements:
       # SMU A
       - "smua.source.func = smua.OUTPUT_DCVOLTS"
       - "smua.source.autorangev = smua.AUTORANGE_ON"
-      - "smua.source.limiti = 10e-3" # comlience limit
+      - "smua.source.limiti = 100e-3" # comlience limit
 
       - "smua.trigger.source.listv(vlist)" # sweeps through vlist
       - "smua.trigger.source.action = smua.ENABLE" # enables the source action
@@ -86,12 +96,15 @@ measurements:
       - "smua.nvbuffer1.collectsourcevalues = 1 " # source values are stored with readings in the buffer
 
       - "smua.measure.nplc = 1" # integration time. 0.01 - fast, 0.1 - med, 1 - normal
-      - "smua.measure.autozero = smua.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
+      - "smua.measure.autozero = smua.AUTOZERO_ONCE" # AUTO is not allowed to combine with trigger
       - "smua.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
+      - 'smua.measure.delay = 3' # increase the delay to allow the current to stabilize
+      # - "smua.measure.delayfactor = 4"
 
        # SMU B
       - "smub.source.func = smub.OUTPUT_DCVOLTS" # selects the voltage source function
       - "smub.source.levelv = 0"
+      - "smub.source.limiti = 100e-3"
 
       - "smub.trigger.measure.i(smub.nvbuffer2)" # stores current readings during the sweep in buffer
       - "smub.trigger.measure.action = smub.ENABLE" # makes measurement during the sweep
@@ -102,11 +115,14 @@ measurements:
       - "smub.nvbuffer2.appendmode = 1"
 
       - "smub.measure.nplc = 1" # integration time. 0.01 - fast, 0.1 - med, 1 - normal
-      - "smub.measure.autozero = smub.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
+      - "smub.measure.autozero = smub.AUTOZERO_ONCE" # AUTO is not allowed to combine with trigger
       - "smub.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
+      - 'smub.measure.delay = 3' # increase the delay to 5s to allow the current to stabilize
+      # - "smub.measure.delayfactor = 4"
 
     program:
-      measurements_kwargs:
+      # minimum: true
+      condition_kwargs:
         int_time: LONG # depends on smua.measure.nplc value. 0.01 - fast (SHORT), 0.1 - med (MED), 1 - normal (LONG)
 
   - name: 10v
@@ -123,7 +139,7 @@ measurements:
       # SMU A
       - "smua.source.func = smua.OUTPUT_DCVOLTS"
       - "smua.source.autorangev = smua.AUTORANGE_ON"
-      #- "smua.source.limiti = 10" # comlience limit
+      - "smua.source.limiti = 100e-3" # comlience limit
 
       - "smua.trigger.source.listv(vlist)" # sweeps  smuA through vlist
       - "smua.trigger.source.action = smua.ENABLE" # enables the source action
@@ -138,12 +154,14 @@ measurements:
       - "smua.nvbuffer1.collectsourcevalues = 1 " # source values are stored with readings in the buffer
 
       - "smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
-      - "smua.measure.autozero = smua.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
+      - "smua.measure.autozero = smua.AUTOZERO_ONCE" # AUTO is not allowed to combine with trigger
       - "smua.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
+      - 'smua.measure.delay = 2' # increase the delay to 5s to allow the current to stabilize
 
         # SMU B
       - "smub.source.func = smub.OUTPUT_DCVOLTS" # selects the voltage source function
       - "smub.source.levelv = 0"
+      - "smub.source.limiti = 100e-3"
 
       - "smub.trigger.measure.i(smub.nvbuffer2)" # stores current readings during the sweep in buffer
       - "smub.trigger.measure.action = smub.ENABLE" # makes measurement during the sweep
@@ -154,15 +172,17 @@ measurements:
       - "smub.nvbuffer2.appendmode = 1"
 
       - "smub.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
-      - "smub.measure.autozero = smub.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
+      - "smub.measure.autozero = smub.AUTOZERO_ONCE" # AUTO is not allowed to combine with trigger
       - "smub.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
+      - 'smub.measure.delay = 2' # increase the delay to 5s to allow the current to stabilize
 
     program:
+      # minimum: true
       validation:
         anode_current[-1]:
           min:
             abs: true
             value: !!float 5e-3
             message: Current leakage is too low. Check if there is a good contact.
-      measurements_kwargs:
+      condition_kwargs:
         int_time: LONG

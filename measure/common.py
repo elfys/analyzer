@@ -11,12 +11,14 @@ from orm import (
     Wafer,
 )
 from utils import (
+    from_context,
     get_or_create_chips,
     get_or_create_wafer,
 )
 
 
-def set_configs(instrument: GPIBInstrument, commands: list[str]):
+@from_context("instruments.main", "instrument")
+def set_configs(commands: list[str], instrument: GPIBInstrument):
     for command in commands:
         instrument.write(command)
 
@@ -33,7 +35,9 @@ def execute_command(instrument: GPIBInstrument, command: str, command_type: str)
     raise ValueError(f"Invalid command type {command_type}")
 
 
-def get_raw_measurements(instrument: GPIBInstrument, commands: dict) -> dict[str, list]:
+@from_context("configs.measure", "commands")
+@from_context("instruments.main", "instrument")
+def get_raw_measurements(commands: dict, instrument: GPIBInstrument) -> dict[str, list]:
     measurements: dict[str, list] = {}
     for command in commands:
         value = execute_command(instrument, command["command"], command["type"])
@@ -85,15 +89,11 @@ def _validate_measurements(
 
 
 def get_chips_for_names(chip_names, wafer_name, chips_number, session) -> list[Chip]:
-    ctx = click.get_current_context()
+    if len({c.upper() for c in chip_names}) != len(chip_names):
+        raise ValueError("Chip names must be unique")
     if chips_number != len(chip_names):
-        if len(chip_names) > 0:
-            ctx.obj["logger"].warning(
-                f"Number of chip names does not match number of chips in config file. {chips_number} chip names expected"
-            )
-        for i in range(len(chip_names), chips_number):
-            chip_name = click.prompt(f"Input chip name {i + 1}", type=str)
-            chip_names += (chip_name,)
+        raise ValueError(f"{chips_number} chip names expected, based on provided config file")
+    
     wafer = get_or_create_wafer(wafer_name, session=session, query_options=joinedload(Wafer.chips))
-    chips = get_or_create_chips(session, wafer, chip_names)
+    chips = get_or_create_chips(wafer, chip_names)
     return chips

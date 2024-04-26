@@ -45,12 +45,11 @@ def get_or_create_wafer(
             abort=True,
         )
         wafer = Wafer(name=wafer_name)
-        session.add(wafer)
     
     return wafer
 
 
-def get_or_create_chips(session: Session, wafer: Wafer, chip_names: Sequence[str]) -> list[Chip]:
+def get_or_create_chips(wafer: Wafer, chip_names: Sequence[str]) -> list[Chip]:
     existing_chips_dict = {chip.name.upper(): chip for chip in wafer.chips}
     result = []
     for chip_name in chip_names:
@@ -58,7 +57,6 @@ def get_or_create_chips(session: Session, wafer: Wafer, chip_names: Sequence[str
             chip = Chip(name=chip_name)
             wafer.chips.append(chip)
             result.append(chip)
-            session.add(chip)
         else:
             result.append(existing_chips_dict[chip_name.upper()])
     

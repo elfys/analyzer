@@ -4,7 +4,6 @@ from datetime import (
 )
 from decimal import Decimal
 from typing import (
-    Any,
     Iterable,
 )
 
@@ -12,13 +11,17 @@ import click
 import pandas as pd
 from openpyxl.styles import PatternFill
 from sqlalchemy.orm import (
-    Session,
+    Query,
     contains_eager,
     joinedload,
     undefer,
 )
 
-from analyzer.summary.common import (
+from ..context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
+from .common import (
     apply_conditional_formatting,
     date_formats,
     date_formats_help,
@@ -31,7 +34,7 @@ from orm import (
     ChipState,
     IVMeasurement,
     IvConditions,
-    Wafer,
+    WaferRepository,
 )
 from utils import (
     EntityOption,
@@ -41,7 +44,7 @@ from utils import (
 
 
 @click.command(name="iv", help="Make summary (png and xlsx) for IV measurements' data.")
-@click.pass_context
+@pass_analyzer_context
 @click.option("-t", "--chips-type", help="Type of the chips to analyze.")
 @click.option("-w", "--wafer", "wafer_name", prompt=True, help="Wafer name.")
 @click.option(
@@ -74,7 +77,7 @@ from utils import (
     help=f"Include measurements after (inclusive) provided date and time. {date_formats_help}",
 )
 def summary_iv(
-    ctx: click.Context,
+    ctx: AnalyzerContext,
     chips_type: str | None,
     wafer_name: str,
     chip_states: tuple[ChipState],
@@ -82,14 +85,10 @@ def summary_iv(
     before: datetime | None,
     after: datetime | None,
 ):
-    session: Session = ctx.obj["session"]
-    if ctx.obj["default_wafer"].name != wafer_name:
-        wafer = session.query(Wafer).filter(Wafer.name == wafer_name).first()
-    else:
-        wafer = ctx.obj["default_wafer"]
+    wafer = WaferRepository(ctx.session).get(name=wafer_name)
     
-    query = (
-        session.query(IvConditions)
+    query: Query = (
+        ctx.session.query(IvConditions)
         .join(IvConditions.measurements)
         .filter(
             IvConditions.chip.has(Chip.wafer == wafer),
@@ -105,7 +104,7 @@ def summary_iv(
     if chips_type is not None:
         query = query.filter(IvConditions.chip.has(Chip.type == chips_type))
     else:
-        ctx.obj["logger"].info(
+        ctx.logger.info(
             "Chips type (-t or --chips-type) is not specified. Analyzing all chip types."
         )
     
@@ -117,7 +116,7 @@ def summary_iv(
     conditions = query.all()
     
     if not conditions:
-        ctx.obj["logger"].warning("No measurements found.")
+        ctx.logger.warning("No measurements found.")
         return
     
     # sort conditions by amplitude of voltage, smaller go last
@@ -136,7 +135,7 @@ def summary_iv(
     voltages = sheets_data["anode"].columns.intersection(
         map(Decimal, ["-1", "0.01", "5", "6", "10", "20"])
     )
-    thresholds = get_thresholds(session, "IV")
+    thresholds = get_thresholds(ctx.session, "IV")
     
     chips_types = (
         {chips_type}
@@ -148,7 +147,7 @@ def summary_iv(
     file_name = get_indexed_filename(f"Summary-IV-{title.replace(' ', '-')}", ("png", "xlsx"))
     
     if len(chips_types) > 1:
-        ctx.obj["logger"].warning(
+        ctx.logger.warning(
             f"Multiple chip types are found ({chips_types}). Plotting is not supported and will be skipped."
         )
     else:
@@ -165,17 +164,17 @@ def summary_iv(
         
         png_file_name = f"{file_name}.png"
         fig.savefig(png_file_name, dpi=300)
-        ctx.obj["logger"].info(f"Summary data is plotted to {png_file_name}")
+        ctx.logger.info(f"Summary data is plotted to {png_file_name}")
     
     exel_file_name = f"{file_name}.xlsx"
     info = get_info(wafer=wafer, chip_states=chip_states, measurements=conditions)
     save_iv_summary_to_excel(sheets_data, info, exel_file_name, voltages, thresholds)
     
-    ctx.obj["logger"].info(f"Summary data is saved to {exel_file_name}")
+    ctx.logger.info(f"Summary data is saved to {exel_file_name}")
 
 
 def save_iv_summary_to_excel(
-    sheets_data, # TODO: add type
+    sheets_data,  # TODO: add type
     info: pd.Series,
     file_name: str,
     voltages: Iterable[Decimal],
@@ -206,9 +205,11 @@ def save_iv_summary_to_excel(
         info.to_excel(writer, sheet_name="Info")
 
 
+@pass_analyzer_context
 def get_sheets_iv_data(
+    ctx: AnalyzerContext,
     measurements: Iterable[IVMeasurement],
-): # TODO: annotate return type
+):  # TODO: annotate return type
     anode_df = pd.DataFrame(dtype="float64")
     cathode_df = pd.DataFrame(dtype="float64")
     guard_ring_df = pd.DataFrame(dtype="float64")
@@ -223,7 +224,7 @@ def get_sheets_iv_data(
             cathode_df.loc[cell_location] = measurement.cathode_current
             guard_ring_df.loc[cell_location] = measurement.guard_current
     if has_uncorrected_current:
-        click.get_current_context().obj["logger"].warning(
+        ctx.logger.warning(
             "Some current measurements are not corrected by temperature."
         )
     return {

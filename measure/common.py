@@ -3,20 +3,23 @@ from typing import Optional
 import click
 import pandas as pd
 from jsonpath_ng import parse
-from pyvisa.resources import GPIBInstrument
 
-from utils import (
-    from_context,
+from .context import (
+    MeasureContext,
+    from_config,
+    pass_measure_context,
 )
+from .instrument import PyVisaInstrument
 
 
-@from_context("instruments.main", "instrument")
-def apply_configs(commands: list[str], instrument: GPIBInstrument):
+@pass_measure_context
+def apply_configs(ctx: MeasureContext, commands: list[str]):
+    instrument: PyVisaInstrument = ctx.instruments["main"]
     for command in commands:
         instrument.write(command)
 
 
-def execute_command(instrument: GPIBInstrument, command: str, command_type: str):
+def execute_command(instrument: PyVisaInstrument, command: str, command_type: str):
     if command_type == "query":
         return instrument.query(command)
     if command_type == "write":
@@ -28,9 +31,10 @@ def execute_command(instrument: GPIBInstrument, command: str, command_type: str)
     raise ValueError(f"Invalid command type {command_type}")
 
 
-@from_context("configs.measure", "commands")
-@from_context("instruments.main", "instrument")
-def get_raw_measurements(commands: dict, instrument: GPIBInstrument) -> dict[str, list]:
+@pass_measure_context
+@from_config("measure", "commands")
+def get_raw_measurements(ctx: MeasureContext, /, commands: dict) -> dict[str, list]:
+    instrument: PyVisaInstrument = ctx.instruments["main"]
     measurements: dict[str, list] = {}
     for command in commands:
         value = execute_command(instrument, command["command"], command["type"])
@@ -39,7 +43,13 @@ def get_raw_measurements(commands: dict, instrument: GPIBInstrument) -> dict[str
     return measurements
 
 
-def validate_measurements(raw_measurements, config: dict, automatic_mode: bool):
+@pass_measure_context
+def validate_measurements(
+    ctx: MeasureContext,
+    raw_measurements,
+    config: dict,
+    automatic_mode: bool
+):
     validation_config = config["program"].get("validation")
     if not validation_config:
         return
@@ -48,8 +58,7 @@ def validate_measurements(raw_measurements, config: dict, automatic_mode: bool):
     if error_msg is None:
         return
     
-    ctx = click.get_current_context()
-    ctx.obj["logger"].warning("%s\n%s", error_msg, pd.DataFrame(raw_measurements).to_string(
+    ctx.logger.warning("%s\n%s", error_msg, pd.DataFrame(raw_measurements).to_string(
         index=False, float_format="%.2e",
     ))
     if automatic_mode:
@@ -79,3 +88,21 @@ def _validate_measurements(
                 else:
                     raise ValueError(f"Unknown validator {validator_name}")
     return None
+
+
+def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: list[str]):
+    configs = ctx.find_object(MeasureContext).configs
+    chip_names = [name.upper() for name in chip_names]
+    base_error_msg = f"{param.opts[0]} parameter is invalid. %s"
+    
+    if "matrix" in configs:
+        if len(chip_names) != 1:
+            raise click.BadParameter("Matrix measurement requires exactly one chip name")
+    else:
+        if len(set(chip_names)) != len(chip_names):
+            raise ValueError(base_error_msg % "Chip names must be unique.")
+        expected_chips_number = len(configs["chips"])
+        if len(chip_names) != expected_chips_number:
+            raise ValueError(base_error_msg % f"{expected_chips_number} chip names expected, based on provided config file.")
+    
+    return tuple(chip_names)

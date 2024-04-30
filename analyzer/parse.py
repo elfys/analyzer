@@ -9,6 +9,7 @@ import click
 import numpy as np
 import pandas as pd
 import sentry_sdk
+from click.exceptions import Exit
 from sqlalchemy.orm import (
     Session,
 )
@@ -24,6 +25,7 @@ from orm import (
     EqeSession,
     IVMeasurement,
     Instrument,
+    InstrumentRepository,
     IvConditions,
     TsConditions,
     TsMeasurement,
@@ -32,23 +34,25 @@ from orm import (
 )
 from utils import (
     eqe_defaults,
-    from_context,
     remember_choice,
     select_one,
     validate_files_glob,
 )
+from .context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
 
 
 @click.command(name="iv", help="Parse IV measurements")
-@click.pass_context
+@pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
-def parse_iv(ctx: click.Context, file_paths: tuple[Path]):
-    session = ctx.obj["session"]
-    instrument_id = session.query(Instrument.id).filter(Instrument.name == "EPG").scalar()
+def parse_iv(ctx: AnalyzerContext, file_paths: tuple[Path]):
+    instrument_id = InstrumentRepository(ctx.session).get_id(name="EPG")
     for file_path in file_paths:
-        with parsing_file(file_path, ctx):
-            chip, wafer = guess_chip_and_wafer(file_path.name, "iv", session)
-            chip_state = ask_chip_state(session)
+        with parsing_file(file_path):
+            chip, wafer = guess_chip_and_wafer(file_path.name, "iv")
+            chip_state = ask_chip_state(ctx.session)
             columns = ["VCA", "IAN", "ICA"]
             data = parse_epg_dat_file(file_path, columns)
             for raw_measurements in data["data"]:
@@ -61,68 +65,64 @@ def parse_iv(ctx: click.Context, file_paths: tuple[Path]):
                     measurements=measurements,
                     instrument_id=instrument_id,
                 )
-                session.add(conditions)
+                ctx.session.add(conditions)
 
 
 @click.command(name="cv", help="Parse CV measurements")
-@click.pass_context
+@pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
-def parse_cv(ctx: click.Context, file_paths: tuple[Path]):
-    session = ctx.obj["session"]
+def parse_cv(ctx: AnalyzerContext, file_paths: tuple[Path]):
     for file_path in file_paths:
-        with parsing_file(file_path, ctx):
-            chip, _ = guess_chip_and_wafer(file_path.name, "cv", session)
-            chip_state = ask_chip_state(session)
+        with parsing_file(file_path):
+            chip, _ = guess_chip_and_wafer(file_path.name, "cv")
+            chip_state = ask_chip_state(ctx.session)
             columns = ["BIAS", "C"]
             data = parse_epg_dat_file(file_path, columns)
             measurements = create_cv_measurements(
                 pd.concat(data["data"], copy=False), data["timestamp"], chip, chip_state
             )
-            session.add_all(measurements)
+            ctx.session.add_all(measurements)
 
 
 @click.command(name="ts", help="Parse Test Structure measurements")
+@pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
-@click.pass_context
-def parse_ts(ctx: click.Context, file_paths: tuple[Path]):
-    session = ctx.obj["session"]
+def parse_ts(ctx: AnalyzerContext, file_paths: tuple[Path]):
     wafer_name = ask_wafer_name()
-    wafer = WaferRepository(session).get_or_create(name=wafer_name)
+    wafer = WaferRepository(ctx.session).get_or_create(name=wafer_name)
     if not wafer.id:
         confirm_wafer_creation(wafer)
     
-    ctx.obj["logger"].info(f"{wafer.name} will be used for every parsed measurement")
+    ctx.logger.info(f"{wafer.name} will be used for every parsed measurement")
     chip_name = ask_chip_name()
-    chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer, type="TS")
+    chip = ChipRepository(ctx.session).get_or_create(name=chip_name, wafer=wafer, type="TS")
     
     for file_path in file_paths:
-        with parsing_file(file_path, ctx):
+        with parsing_file(file_path):
             columns = ["ISR", "V1", "V2", "R"]
             data = parse_epg_dat_file(file_path, columns)
             conditions = create_ts_conditions(file_path.name, chip)
             conditions.measurements = create_ts_measurements(pd.concat(data["data"], copy=False))
             conditions.datetime = data["timestamp"]
-            session.add(conditions)
+            ctx.session.add(conditions)
 
 
 @click.command(name="eqe", help="Parse EQE measurements")
-@click.pass_context
+@pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
-def parse_eqe(ctx: click.Context, file_paths: tuple[Path]):
-    session: Session = ctx.obj["session"]
-    instrument_map: dict[str, Instrument] = {i.name: i for i in session.query(Instrument).all()}
-    
+def parse_eqe(ctx: AnalyzerContext, file_paths: tuple[Path]):
+    instrument_map: dict[str, Instrument] = {i.name: i for i in ctx.session.query(Instrument).all()}
     
     for file_path in file_paths:
-        with parsing_file(file_path, ctx):
+        with parsing_file(file_path):
             data = parse_eqe_dat_file(file_path)
             measurements = create_eqe_measurements(data["data"])
-            chip, _ = guess_chip_and_wafer(file_path.name, "eqe", session)
+            chip, _ = guess_chip_and_wafer(file_path.name, "eqe")
             conditions = create_eqe_conditions(
-                data["conditions"], instrument_map, file_path, session, chip
+                data["conditions"], instrument_map, file_path, chip
             )
             conditions.measurements.extend(measurements)
-            session.add(conditions)
+            ctx.session.add(conditions)
 
 
 @click.group(
@@ -135,25 +135,23 @@ def parse_group():
 
 
 @contextlib.contextmanager
-def parsing_file(file_path: Path, ctx):
-    session: Session = ctx.obj["session"]
-    
+@pass_analyzer_context
+def parsing_file(ctx: AnalyzerContext, file_path: Path):
     print_filename_title(file_path)
     try:
-        transaction = session.begin_nested()
+        transaction = ctx.session.begin_nested()
         yield file_path
         transaction.commit()
         mark_file_as_parsed(file_path)
     except click.exceptions.Abort:
         transaction.rollback()
-        ctx.obj["logger"].info("Skipping file...")
+        ctx.logger.info("Skipping file...")
     except click.exceptions.Exit as e:
-        ctx.obj["logger"].info("Exiting...")
-        ctx.exit(e.exit_code)
+        raise e
     except Exception as e:
         sentry_sdk.capture_exception(e)
         transaction.rollback()
-        ctx.obj["logger"].exception(f"Could not parse file {file_path} due to error: {e}")
+        ctx.logger.exception(f"Could not parse file {file_path} due to error: {e}")
         click.confirm("Do you want to continue?", abort=True)
 
 
@@ -164,14 +162,14 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
     match = matcher.match(filename)
     
     if match is None:
-        click.get_current_context().obj["logger"].warning(
+        click.get_current_context().obj.logger.warning(
             "Could not guess TS parameters from the filename"
         )
         raise click.Abort()
     ts_number = int(match.group("ts_number"))
     ts_step = int(match.group("ts_step"))
     ts_type = match.group("ts_type").upper()
-    click.get_current_context().obj["logger"].info(
+    click.get_current_context().obj.logger.info(
         f"Guessed from filename: Structure type={ts_type}, Number={ts_number}, Step={ts_step}"
     )
     
@@ -184,9 +182,9 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
     return conditions
 
 
-@from_context("logger", "logger")
+@pass_analyzer_context
 def guess_chip_and_wafer(
-    filename: str, prefix: str, session: Session, logger
+    ctx: AnalyzerContext, filename: str, prefix: str
 ) -> tuple[Chip, Wafer]:
     matcher = re.compile(rf"^{prefix}\s+(?P<wafer>[\w\d]+)\s+(?P<chip>[\w\d-]+)(\s.*)?\..*$", re.I)
     match = matcher.match(filename)
@@ -194,22 +192,22 @@ def guess_chip_and_wafer(
     if match is None:
         chip_name = None
         wafer_name = None
-        logger.warning("Could not guess chip and wafer from filename")
+        ctx.logger.warning("Could not guess chip and wafer from filename")
     else:
         chip_name = match.group("chip").upper()
         wafer_name = match.group("wafer").upper()
-        logger.info(f"Guessed from filename: wafer={wafer_name}, chip={chip_name}")
+        ctx.logger.info(f"Guessed from filename: wafer={wafer_name}, chip={chip_name}")
     
     wafer_name = ask_wafer_name(default=wafer_name)
-    wafer = WaferRepository(session).get_or_create(name=wafer_name)
+    wafer = WaferRepository(ctx.session).get_or_create(name=wafer_name)
     
     if not hasattr(wafer, 'id') or not wafer.id:
         confirm_wafer_creation(wafer)
     chip_name = ask_chip_name(default=chip_name)
     if wafer.name == "REF":
-        chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer, type="REF")
+        chip = ChipRepository(ctx.session).get_or_create(name=chip_name, wafer=wafer, type="REF")
     else:
-        chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer)
+        chip = ChipRepository(ctx.session).get_or_create(name=chip_name, wafer=wafer)
     
     return chip, wafer
 
@@ -231,38 +229,39 @@ def ask_wafer_name(default: str = None) -> str:
     if wafer_name == "SKIP":
         raise click.Abort()
     if wafer_name == "EXIT":
-        click.get_current_context().exit(0)
+        raise Exit(0)
     return wafer_name
 
 
-@from_context("session", "session")
-def confirm_wafer_creation(wafer, session: Session):
+@pass_analyzer_context
+def confirm_wafer_creation(ctx: AnalyzerContext, wafer):
     click.confirm(
         f"There is no wafers with name={wafer.name} in the database. Do you want to create one?",
         default=True,
         abort=True,
     )
-    session.add(wafer)
-    session.flush([wafer])  # force id generation
+    ctx.session.add(wafer)
+    ctx.session.flush([wafer])  # force id generation
 
 
-def ask_session(timestamp: datetime, session: Session) -> EqeSession:
+@pass_analyzer_context
+def ask_session(ctx: AnalyzerContext, timestamp: datetime) -> EqeSession:
     found_eqe_sessions: list[EqeSession] = (
-        session.query(EqeSession).filter(EqeSession.date == timestamp.date()).all()
+        ctx.session.query(EqeSession).filter(EqeSession.date == timestamp.date()).all()
     )
     if len(found_eqe_sessions) == 0:
-        click.get_current_context().obj["logger"].info(
+        click.get_current_context().obj.logger.info(
             f"No sessions were found for measurement date {timestamp.date()}"
         )
         eqe_session = EqeSession(date=timestamp.date())
-        session.add(eqe_session)
-        session.flush([eqe_session])
-        click.get_current_context().obj["logger"].info(
+        ctx.session.add(eqe_session)
+        ctx.session.flush([eqe_session])
+        click.get_current_context().obj.logger.info(
             f"New eqe session was created: {repr(eqe_session)}"
         )
     elif len(found_eqe_sessions) == 1:
         eqe_session = found_eqe_sessions.pop()
-        click.get_current_context().obj["logger"].info(
+        click.get_current_context().obj.logger.info(
             f"Existing eqe session will be used: {repr(eqe_session)}"
         )
     else:
@@ -328,7 +327,7 @@ def parse_epg_dat_file(file_path: Path, columns) -> dict[str, datetime | list[pd
     date_match = date_matcher.search(content)
     
     if date_match is None:
-        click.get_current_context().obj["logger"].warning("Could not guess date from file")
+        click.get_current_context().obj.logger.warning("Could not guess date from file")
         date = click.prompt(
             "Input date",
             type=click.DateTime(formats=["%Y-%m-%d"]),
@@ -341,7 +340,7 @@ def parse_epg_dat_file(file_path: Path, columns) -> dict[str, datetime | list[pd
     time_matcher = re.compile(r"^Time:\s*(?P<time>[\d:]+)\s*$", re.M | re.I)
     time_match = time_matcher.search(content)
     if time_match is None:
-        click.get_current_context().obj["logger"].warning("Could not guess time from file")
+        click.get_current_context().obj.logger.warning("Could not guess time from file")
         time = click.prompt(
             "Input time",
             type=click.DateTime(formats=["%H:%M:%S"]),
@@ -361,7 +360,7 @@ def parse_epg_dat_file(file_path: Path, columns) -> dict[str, datetime | list[pd
             data.append(df)
     
     if len(data) == 0:
-        click.get_current_context().obj["logger"].warning(
+        click.get_current_context().obj.logger.warning(
             "No data was found in given file. Does it use the unusual format?"
         )
         raise click.Abort()
@@ -423,24 +422,25 @@ def create_ts_measurements(data: pd.DataFrame) -> list[TsMeasurement]:
     ]
 
 
+@pass_analyzer_context
 def create_eqe_conditions(
+    ctx: AnalyzerContext,
     raw_data: dict,
     instrument_map: dict[str, Instrument],
     file_path: Path,
-    session: Session,
     chip: Chip,
 ) -> EqeConditions:
-    existing = session.query(EqeConditions).filter_by(datetime=raw_data["datetime"]).all()
+    existing = ctx.session.query(EqeConditions).filter_by(datetime=raw_data["datetime"]).all()
     if existing:
         existing_str = "\n".join([f"{i}. {repr(c)}" for i, c in enumerate(existing, start=1)])
-        click.get_current_context().obj["logger"].info(
+        click.get_current_context().obj.logger.info(
             f"Found existing eqe measurements at {raw_data['datetime']}:\n{existing_str}"
         )
         click.confirm("Are you sure you want to add new measurements?", abort=True)
     
     instrument = instrument_map.get(raw_data.pop("instrument"), None)
     if instrument is None:
-        click.get_current_context().obj["logger"].warning(
+        click.get_current_context().obj.logger.warning(
             "Could not find instrument in provided file"
         )
         instrument = select_one(list(instrument_map.values()), "Select instrument")
@@ -462,17 +462,17 @@ def create_eqe_conditions(
     if chip.wafer.name == "REF":
         defaults = eqe_defaults.get(chip.name, None)
         if defaults is not None:
-            click.get_current_context().obj["logger"].info(
+            click.get_current_context().obj.logger.info(
                 f"Default values were applied to chip {chip.name}: {defaults}"
             )
             conditions_data.update(defaults)
     
     if "chip_state" not in conditions_data and "chip_state_id" not in conditions_data:
-        conditions_data["chip_state"] = ask_chip_state(session)
+        conditions_data["chip_state"] = ask_chip_state(ctx.session)
     if "carrier" not in conditions_data and "carrier_id" not in conditions_data:
-        conditions_data["carrier"] = ask_carrier(session)
+        conditions_data["carrier"] = ask_carrier(ctx.session)
     
-    conditions_data["session"] = ask_session(raw_data["datetime"], session)
+    conditions_data["session"] = ask_session(raw_data["datetime"])
     
     return EqeConditions(**conditions_data)
 
@@ -481,7 +481,7 @@ def print_filename_title(path: Path, top_margin: int = 2, bottom_margin: int = 1
     if top_margin:
         click.echo("\n" * top_margin, nl=False)
     
-    click.get_current_context().obj["logger"].debug(f"Processing file: {path.name}")
+    click.get_current_context().obj.logger.debug(f"Processing file: {path.name}")
     click.echo("╔" + "═" * (len(path.name) + 2) + "╗")
     click.echo("║ " + path.name + " ║")
     click.echo("╚" + "═" * (len(path.name) + 2) + "╝")
@@ -491,6 +491,6 @@ def print_filename_title(path: Path, top_margin: int = 2, bottom_margin: int = 1
 
 def mark_file_as_parsed(file_path: Path):
     file_path = file_path.rename(file_path.with_suffix(file_path.suffix + ".parsed"))
-    click.get_current_context().obj["logger"].info(
+    click.get_current_context().obj.logger.info(
         f"File was saved to database and renamed to '{file_path.name}'"
     )

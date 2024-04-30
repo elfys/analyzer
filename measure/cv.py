@@ -1,5 +1,4 @@
 import click
-from sqlalchemy.orm import Session
 
 from orm import (
     CVMeasurement,
@@ -8,20 +7,22 @@ from orm import (
 )
 from utils import (
     EntityOption,
-    validate_chip_names,
 )
 from .common import (
     apply_configs,
     get_raw_measurements,
+    validate_chip_names,
     validate_measurements,
+)
+from .context import (
+    MeasureContext,
+    pass_measure_context,
 )
 
 
 @click.command(name="cv", help="Measure CV data of the current chip.")
-@click.pass_context
-@click.option("-n",
-              "--chip-name",
-              "chip_names",
+@pass_measure_context
+@click.option("--chip-name", "-n", "chip_names",
               help="Chip name.",
               multiple=True,
               callback=validate_chip_names)
@@ -42,33 +43,31 @@ from .common import (
     help="Automatic measurement mode. Invalid measurements will be skipped.",
 )
 def cv(
-    ctx: click.Context,
+    ctx: MeasureContext,
     chip_names: tuple[str],
     wafer_name: str,
     chip_state: ChipState,
     automatic_mode: bool,
 ):
-    session: Session = ctx.obj["session"]
-    configs: dict = ctx.obj["configs"]
-    chips = ChipRepository(session).get_or_create_chips_for_wafer(chip_names, wafer_name)
+    chips = ChipRepository(ctx.session).get_or_create_chips_for_wafer(chip_names, wafer_name)
     
-    for setup_config in configs["setups"]:
-        ctx.obj["logger"].info(f'Executing setup {setup_config["name"]}')
+    for setup_config in ctx.configs["setups"]:
+        ctx.logger.info(f'Executing setup {setup_config["name"]}')
         apply_configs(setup_config["instrument"])
         raw_measurements = get_raw_measurements()
         
         validate_measurements(raw_measurements, setup_config, automatic_mode)
         
-        for chip, chip_config in zip(chips, configs["chips"], strict=True):
+        for chip, chip_config in zip(chips, ctx.configs["chips"], strict=True):
             measurements_kwargs = dict(
                 chip_state_id=chip_state.id,
                 chip=chip,
                 **setup_config["program"]["measurements_kwargs"],
             )
             measurements = create_measurements(raw_measurements, chip_config, **measurements_kwargs)
-            session.add_all(measurements)
-    session.commit()
-    ctx.obj["logger"].info("Measurements saved")
+            ctx.session.add_all(measurements)
+    ctx.session.commit()
+    ctx.logger.info("Measurements saved")
 
 
 def create_measurements(

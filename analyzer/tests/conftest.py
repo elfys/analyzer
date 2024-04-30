@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from analyzer.tests.log_mem_handler import LogMemHandler
 from .fixtures import *  # noqa F401
+from .. import AnalyzerContext
 
 
 @pytest.fixture(scope="session")
@@ -120,4 +121,4 @@ def log_handler(test_logger):
 
 @pytest.fixture
 def ctx_obj(session, log_handler, test_logger):
-    return {"session": session, "logger": test_logger}
+    return AnalyzerContext(session=session, logger=test_logger)

@@ -12,7 +12,6 @@ from sqlalchemy import (
     bindparam,
     select,
 )
-from sqlalchemy.orm import Session
 
 from orm import (
     Chip,
@@ -27,10 +26,14 @@ from utils import (
     flatten_options_type,
     get_thresholds,
 )
+from .context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
 
 
 @click.command(name="wafers", help="Compare wafers")
-@click.pass_context
+@pass_analyzer_context
 @click.option(
     "-w",
     "--wafers",
@@ -59,25 +62,24 @@ from utils import (
     show_default="wafers-comparison-{datetime}.xlsx",
 )
 def compare_wafers(
-    ctx: click.Context, wafer_names: set[str], chip_states: tuple[EntityOption], file_name: str
+    ctx: AnalyzerContext, wafer_names: set[str], chip_states: tuple[EntityOption], file_name: str
 ):
-    session: Session = ctx.obj["session"]
     wafer_names = set(map(lambda x: x.upper(), wafer_names))
-    wafers = session.execute(select(Wafer).filter(Wafer.name.in_(wafer_names))).scalars().all()
+    wafers = ctx.session.execute(select(Wafer).filter(Wafer.name.in_(wafer_names))).scalars().all()
     
     not_found_wafers = wafer_names - set(wafer.name for wafer in wafers)
     if not_found_wafers:
-        ctx.obj["logger"].warning(f"Wafers not found: {', '.join(not_found_wafers)}")
+        ctx.logger.warning(f"Wafers not found: {', '.join(not_found_wafers)}")
         wafer_names -= not_found_wafers
     
-    sheets_data = get_sheets_data(ctx, session, wafers)
+    sheets_data = get_sheets_data(wafers)
     
     if not sheets_data["frame_keys"]:
-        ctx.obj["logger"].warning("No data to compare")
+        ctx.logger.warning("No data to compare")
         return
     
     save_compare_wafers_report(file_name, sheets_data, chip_states)
-    ctx.obj["logger"].info(f"Wafers comparison is saved to {file_name}")
+    ctx.logger.info(f"Wafers comparison is saved to {file_name}")
 
 
 def save_compare_wafers_report(file_name, sheets_data, chip_states):
@@ -112,8 +114,9 @@ def save_compare_wafers_report(file_name, sheets_data, chip_states):
                     cell.number_format = number_format
 
 
-def get_sheets_data(ctx: click.Context, session, wafers: Iterable[Wafer]) -> dict[str, dict]:
-    thresholds = get_thresholds(session, "IV")
+@pass_analyzer_context
+def get_sheets_data(ctx: AnalyzerContext, wafers: Iterable[Wafer]) -> dict[str, dict]:
+    thresholds = get_thresholds(ctx.session, "IV")
     
     threshold_voltages = set({v for x in thresholds.values() for v in x.keys()})
     conditions_query = (
@@ -138,11 +141,11 @@ def get_sheets_data(ctx: click.Context, session, wafers: Iterable[Wafer]) -> dic
     
     for wafer in wafers:
         values_frame = pd.read_sql_query(
-            conditions_query.params(wafer_id=wafer.id), session.connection()
+            conditions_query.params(wafer_id=wafer.id), ctx.session.connection()
         )
         
         if values_frame.empty:
-            ctx.obj["logger"].warning(f"Not found measurements for {wafer.name}")
+            ctx.logger.warning(f"Not found measurements for {wafer.name}")
             continue
         sheets_data["frame_keys"].append(wafer.name)
         

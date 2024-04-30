@@ -1,9 +1,7 @@
-import logging
 from time import sleep
 
 import click
 import numpy as np
-from sqlalchemy.orm import Session
 
 from orm import (
     ChipRepository,
@@ -11,20 +9,22 @@ from orm import (
     IVMeasurement,
     InstrumentRepository,
     IvConditionsRepository,
-)
-from orm.matrix import (
     Matrix,
     MatrixRepository,
 )
 from utils import (
     EntityOption,
-    from_context,
-    validate_chip_names,
 )
 from .common import (
     apply_configs,
     get_raw_measurements,
+    validate_chip_names,
     validate_measurements,
+)
+from .context import (
+    MeasureContext,
+    from_config,
+    pass_measure_context,
 )
 from .instrument import (
     PyVisaInstrument,
@@ -33,6 +33,7 @@ from .instrument import (
 
 
 @click.command(name="iv", help="Measure IV data of the current chip.")
+@pass_measure_context
 @click.option("-n",
               "--chip-name",
               "chip_names",
@@ -55,31 +56,26 @@ from .instrument import (
     is_flag=True,
     help="Automatic measurement mode. Invalid measurements will be skipped.",
 )
-@from_context("configs.instruments.main.name", "instrument_name")
-@from_context("session", "session")
-@from_context("logger", "logger")
-@from_context("configs", "configs")
+@from_config("instruments.main.name", "instrument_name")
 def measure_iv_command(
+    ctx: MeasureContext,
     chip_names: tuple[str],
     wafer_name: str,
     chip_state: ChipState,
     automatic: bool,
     instrument_name: str,
-    session: Session,
-    logger: logging.Logger,
-    configs: dict,
 ):
-    instrument_id = InstrumentRepository(session).get_id(name=instrument_name)
-    if (matrix_config := configs.get("matrix")) is not None:
-        matrix = MatrixRepository(session).get_or_create_from_configs(
+    instrument_id = InstrumentRepository(ctx.session).get_id(name=instrument_name)
+    if (matrix_config := ctx.configs.get("matrix")) is not None:
+        matrix = MatrixRepository(ctx.session).get_or_create_from_configs(
             matrix_name=chip_names[0], wafer_name=wafer_name, matrix_config=matrix_config
         )
     else:
-        chips = ChipRepository(session).get_or_create_chips_for_wafer(chip_names, wafer_name)
-    session.commit()
+        chips = ChipRepository(ctx.session).get_or_create_chips_for_wafer(chip_names, wafer_name)
+    ctx.session.commit()
     
-    for setup_config in configs["setups"]:
-        logger.info(f'Executing setup {setup_config["name"]}')
+    for setup_config in ctx.configs["setups"]:
+        ctx.logger.info(f'Executing setup {setup_config["name"]}')
         apply_configs(setup_config["instrument"])
         conditions_kwargs = {
             "instrument_id": instrument_id,
@@ -91,20 +87,19 @@ def measure_iv_command(
             measure_matrix(matrix, automatic, setup_config, conditions_kwargs)
         else:
             measure_setup(automatic, chips, setup_config, conditions_kwargs)
-    session.commit()
-    logger.info("Measurements saved")
+    ctx.session.commit()
+    ctx.logger.info("Measurements saved")
 
 
-@from_context("instruments.scanner", "scanner")
-@from_context("session", "session")
-def measure_matrix(  # chip_names[0], wafer_name,automatic,  setup_config, conditions_kwargs
+@pass_measure_context
+def measure_matrix(
+    ctx: MeasureContext,
     matrix: Matrix,
     automatic,
     setup_config,
     conditions_kwargs,
-    scanner: PyVisaInstrument,
-    session: Session,
 ):
+    scanner: PyVisaInstrument = ctx.instruments["scanner"]
     scanner.write("RX")  # open all channels
     chips = sorted(matrix.chips, key=lambda c: c.name)
     for i, chip in enumerate(chips, start=1):
@@ -121,47 +116,46 @@ def measure_matrix(  # chip_names[0], wafer_name,automatic,  setup_config, condi
                     click.confirm(
                         "Do you want to continue measuring other pixels?", abort=True, default=True)
         scanner.write("RX")  # open all channels
-        session.commit()  # commit after each chip
+        ctx.session.commit()  # commit after each chip
 
 
-@from_context("instruments.temperature", "thermometer")
-@from_context("session", "session")
-@from_context("configs.chips", "chip_configs")
-@from_context("logger", "logger")
+@pass_measure_context
+@from_config("chips", "chip_configs")
 def measure_setup(
-    automatic,
+    ctx: MeasureContext,
+    automatic: bool,
     chips,
     setup_config,
     conditions_kwargs,
+    /,
     chip_configs,
-    session: Session,
-    thermometer: TemperatureInstrument,
-    logger: logging.Logger,
 ):
+    thermometer: TemperatureInstrument = ctx.instruments["temperature"]
     temperature = thermometer.get_temperature()
     validate_temperature(temperature, automatic)
     
-    logger.info(f"Measuring {', '.join([c.name for c in chips])}")
+    ctx.logger.info(f"Measuring {', '.join([c.name for c in chips])}")
     if setup_config["program"].get("minimum", False):
         raw_measurements = get_minimal_measurements()
     else:
         raw_measurements = get_raw_measurements()
     validate_measurements(raw_measurements, setup_config, automatic)
     
-    iv_cond_repo = IvConditionsRepository(session)
+    iv_cond_repo = IvConditionsRepository(ctx.session)
     for chip, chip_config in zip(chips, chip_configs, strict=True):
         iv_conditions = iv_cond_repo.create(
             chip=chip, temperature=temperature, **conditions_kwargs,
             measurements=create_measurements(raw_measurements, temperature, chip_config),
         )
-        session.add(iv_conditions)
+        ctx.session.add(iv_conditions)
 
 
-@from_context("configs.instruments.main", "instrument_config")
+@from_config("instruments.main", "instrument_config")
 def create_measurements(
     raw_measurements: dict[str, list[float]],
     temperature: float,
     chip_config: dict,
+    /,
     instrument_config: dict,
 ) -> list[IVMeasurement]:
     kwarg_keys = list(chip_config.keys())
@@ -207,20 +201,17 @@ def compute_corrected_current(temp: float, current: float):
     return 1.15 ** (target_temperature - temp) * current
 
 
-@from_context("logger", "logger")
-def validate_temperature(temperature, automatic, logger):
+@pass_measure_context
+def validate_temperature(ctx: MeasureContext, temperature: float, automatic: bool):
     if 18 <= temperature <= 30:
         return True
     
     if temperature < 0:
-        logger.error(
-            f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!"
-        )
         raise click.Abort(
             f"Temperature value is too low. temp: {temperature:.2f}. Check sensor connection!"
         )
     
-    logger.warning(
+    ctx.logger.warning(
         f"Current temperature is too {'low' if temperature < 18 else 'high'}. temp: {temperature:.2f}"
     )
     if not automatic:

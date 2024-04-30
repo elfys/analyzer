@@ -6,7 +6,6 @@ from decimal import Decimal
 from typing import (
     Any,
     Iterable,
-    List,
 )
 
 import click
@@ -14,13 +13,15 @@ import pandas as pd
 from openpyxl.styles import PatternFill
 from pandas import DataFrame
 from sqlalchemy.orm import (
-    InstrumentedAttribute,
-    Session,
+    Query,
     joinedload,
 )
-from sqlalchemy.orm.base import _T_co
 
-from analyzer.summary.common import (
+from ..context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
+from .common import (
     apply_conditional_formatting,
     date_formats,
     date_formats_help,
@@ -32,7 +33,7 @@ from orm import (
     CVMeasurement,
     Chip,
     ChipState,
-    Wafer,
+    WaferRepository,
 )
 from utils import (
     EntityOption,
@@ -42,7 +43,7 @@ from utils import (
 
 
 @click.command(name="cv", help="Make summary (png and xlsx) for CV measurements' data.")
-@click.pass_context
+@pass_analyzer_context
 @click.option("-t", "--chips-type", help="Type of the chips to analyze.")
 @click.option("-w", "--wafer", "wafer_name", prompt="Wafer name", help="Wafer name.")
 @click.option(
@@ -75,7 +76,7 @@ from utils import (
     help=f"Include measurements after (inclusive) provided date and time. {date_formats_help}",
 )
 def summary_cv(
-    ctx: click.Context,
+    ctx: AnalyzerContext,
     chips_type: str | None,
     wafer_name: str,
     chip_states: list[ChipState],
@@ -83,13 +84,9 @@ def summary_cv(
     before: datetime | None,
     after: datetime | None,
 ):
-    session: Session = ctx.obj["session"]
-    if ctx.obj["default_wafer"].name != wafer_name:
-        wafer = session.query(Wafer).filter(Wafer.name == wafer_name).first()
-    else:
-        wafer = ctx.obj["default_wafer"]
-    query = (
-        session.query(CVMeasurement)
+    wafer = WaferRepository(ctx.session).get(name=wafer_name)
+    query: Query = (
+        ctx.session.query(CVMeasurement)
         .filter(CVMeasurement.chip.has(Chip.wafer.__eq__(wafer)))
         .options(joinedload(CVMeasurement.chip))
     )
@@ -98,7 +95,7 @@ def summary_cv(
     if chips_type is not None:
         query = query.filter(CVMeasurement.chip.has(Chip.type.__eq__(chips_type)))
     else:
-        ctx.obj["logger"].info(
+        ctx.logger.info(
             "Chips type (-t or --chips-type) is not specified. Analyzing all chip types."
         )
     
@@ -112,7 +109,7 @@ def summary_cv(
     measurements: list[CVMeasurement] = query.all()
     
     if not measurements:
-        ctx.obj["logger"].warning("No measurements found.")
+        ctx.logger.warning("No measurements found.")
         return
     
     chips_types = (
@@ -123,12 +120,12 @@ def summary_cv(
     
     sheets_data = get_sheets_cv_data(measurements)
     voltages = sorted(Decimal(v) for v in ["-5", "0", "-35"])
-    thresholds = get_thresholds(session, "CV")
+    thresholds = get_thresholds(ctx.session, "CV")
     
     file_name = get_indexed_filename(f"Summary-CV-{wafer_name}", ("png", "xlsx"))
     
     if len(chips_types) > 1:
-        ctx.obj["logger"].warning(
+        ctx.logger.warning(
             f"Multiple chip types are found ({chips_types}). Plotting is not supported and will be skipped."
         )
     else:
@@ -141,13 +138,13 @@ def summary_cv(
         png_file_name = f"{file_name}.png"
         
         fig.savefig(png_file_name, dpi=300)
-        ctx.obj["logger"].info(f"Summary data is plotted to {png_file_name}")
+        ctx.logger.info(f"Summary data is plotted to {png_file_name}")
     
     exel_file_name = f"{file_name}.xlsx"
     info = get_info(wafer=wafer, chip_states=chip_states, measurements=measurements)
     save_cv_summary_to_excel(sheets_data, info, exel_file_name, voltages, thresholds)
     
-    ctx.obj["logger"].info(f"Summary data is saved to {exel_file_name}")
+    ctx.logger.info(f"Summary data is saved to {exel_file_name}")
 
 
 # class SheetsCVData(TypedDict): # TODO: finish this

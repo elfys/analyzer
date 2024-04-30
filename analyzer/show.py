@@ -4,8 +4,11 @@ from sqlalchemy import (
     func,
     select,
 )
-from sqlalchemy.orm import Session
 
+from .context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
 from orm import (
     Chip,
     Wafer,
@@ -26,9 +29,8 @@ from orm import (
 """,
 )
 @click.option("--json", is_flag=True, help="Output as JSON.")
-@click.pass_context
-def show_wafers(ctx: click.Context, json: bool):
-    session: Session = ctx.obj["session"]
+@pass_analyzer_context
+def show_wafers(ctx: AnalyzerContext, json: bool):
     wafers_query = (
         select(
             Wafer,
@@ -38,7 +40,7 @@ def show_wafers(ctx: click.Context, json: bool):
         .group_by(Wafer.id)
         .order_by(Wafer.record_created_at.desc())
     )
-    wafers_df = pd.read_sql(wafers_query, session.connection(), index_col="id")
+    wafers_df = pd.read_sql(wafers_query, ctx.session.connection(), index_col="id")
     
     if json:
         click.echo(wafers_df.to_json(orient="index", indent=4))

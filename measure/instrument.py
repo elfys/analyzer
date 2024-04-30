@@ -20,60 +20,6 @@ DEFAULT_CONFIGS = {
 }
 
 
-class InstrumentFactory:
-    def __call__(self, config, simulate=False):
-        kind = config["kind"]
-        name = config["name"]
-        kwargs = {**DEFAULT_CONFIGS.get(name, {}), **config.get("kwargs", {})}
-        resource_id = config["resource"]
-        
-        if kind == "pyvisa":
-            if simulate:
-                rm = pyvisa.ResourceManager("measure/tests/simulation.yaml@sim")
-                return PyVisaInstrument(
-                    "GPIB0::9::INSTR",
-                    f"{name} simulation",
-                    {'read_termination': '\n', 'write_termination': '\n'},
-                    rm,
-                )
-            else:
-                rm = pyvisa.ResourceManager()
-                return PyVisaInstrument(resource_id, name, kwargs, rm)
-        elif kind == "temperature":
-            return TemperatureInstrument(resource_id, simulate)
-        else:
-            raise ValueError(f"Unknown instrument kind: {kind}")
-
-
-class TemperatureInstrument:
-    def __init__(self, sensor_id, simulate=False):
-        self.sensor_id = sensor_id
-        self.simulate = simulate
-        self.sensor = None
-    
-    def __enter__(self):
-        if self.simulate:
-            return self
-        errmsg = YRefParam()
-        if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
-            raise RuntimeError("RegisterHub (temperature sensor) error: " + errmsg.value)
-        
-        # TODO: does it work with simple 'temperature' instead of sensor_id?
-        sensor: YTemperature = YTemperature.FindTemperature(self.sensor_id)
-        if not (sensor.isOnline()):
-            raise RuntimeError("Temperature sensor is not connected")
-        self.sensor = sensor
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        YAPI.FreeAPI()
-    
-    def get_temperature(self):
-        if self.simulate:
-            return random() * 10 + 20
-        return self.sensor.get_currentValue()
-
-
 class PyVisaInstrument:
     def __init__(self, resource_id, name, config, rm):
         self.resource_id = resource_id
@@ -118,3 +64,60 @@ class PyVisaInstrument:
         while int(float(instrument.query("print(errorqueue.count)"))) > 0:
             error = instrument.query("print(errorqueue.next())")
             logger.warning(f"Instrument error: {error}")
+
+
+class TemperatureInstrument:
+    def __init__(self, sensor_id, simulate=False):
+        self.sensor_id = sensor_id
+        self.simulate = simulate
+        self.sensor = None
+    
+    def __enter__(self):
+        if self.simulate:
+            return self
+        errmsg = YRefParam()
+        if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
+            raise RuntimeError("RegisterHub (temperature sensor) error: " + errmsg.value)
+        
+        # TODO: does it work with simple 'temperature' instead of sensor_id?
+        sensor: YTemperature = YTemperature.FindTemperature(self.sensor_id)
+        if not (sensor.isOnline()):
+            raise RuntimeError("Temperature sensor is not connected")
+        self.sensor = sensor
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        YAPI.FreeAPI()
+    
+    def get_temperature(self):
+        if self.simulate:
+            return random() * 10 + 20
+        return self.sensor.get_currentValue()
+
+
+type InstrumentsTypes = PyVisaInstrument | TemperatureInstrument
+
+
+class InstrumentFactory:
+    def __call__(self, config, simulate=False) -> InstrumentsTypes:
+        kind = config["kind"]
+        name = config["name"]
+        kwargs = {**DEFAULT_CONFIGS.get(name, {}), **config.get("kwargs", {})}
+        resource_id = config["resource"]
+        
+        if kind == "pyvisa":
+            if simulate:
+                rm = pyvisa.ResourceManager("measure/tests/simulation.yaml@sim")
+                return PyVisaInstrument(
+                    "GPIB0::9::INSTR",
+                    f"{name} simulation",
+                    {'read_termination': '\n', 'write_termination': '\n'},
+                    rm,
+                )
+            else:
+                rm = pyvisa.ResourceManager()
+                return PyVisaInstrument(resource_id, name, kwargs, rm)
+        elif kind == "temperature":
+            return TemperatureInstrument(resource_id, simulate)
+        else:
+            raise ValueError(f"Unknown instrument kind: {kind}")

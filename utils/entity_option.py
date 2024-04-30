@@ -46,7 +46,7 @@ class EntityOption(click.Option):
             return options_dict[value]
     
     def get_options(self, ctx: Context):
-        session: Session = ctx.obj["session"]
+        session: Session = ctx.obj.session
         return session.query(self.entity_type).order_by(self.entity_type.id).all()
     
     def get_help_record(self, ctx: Context) -> Optional[tuple[str, str]]:

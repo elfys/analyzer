@@ -1,15 +1,16 @@
 import re
 from datetime import datetime
 from itertools import chain
-from typing import    Sequence
+from typing import Sequence
 
+import click
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from orm import EqeSession
 
 
-def eqe_session_date(ctx, param, session_date: datetime | None):
+def eqe_session_date(ctx: click.Context, param: click.Parameter, session_date: datetime | None):
     if session_date is None:
         return None
     
@@ -22,7 +23,7 @@ def eqe_session_date(ctx, param, session_date: datetime | None):
         )
     
     if eqe_session is None:
-        ctx.obj["logger"].warning("EQE session with specified date was not found!")
+        ctx.obj.logger.warning("EQE session with specified date was not found!")
         ctx.exit()
     
     return eqe_session

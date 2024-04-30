@@ -9,10 +9,9 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from utils import get_db_url
+from .context import MeasureContext
 from .cv import cv
-from .instrument import (
-    InstrumentFactory,
-)
+from .instrument import InstrumentFactory
 from .iv import measure_iv_command
 
 
@@ -42,42 +41,37 @@ def measure_group(
     db_url: str | None,
     simulate: bool,
 ):
-    ctx.obj = ctx.obj or {}
-    if "logger" in ctx.obj:
-        logger = ctx.obj.get("logger")
-    else:
-        logger = logging.getLogger("analyzer")
-        logger.setLevel(log_level)
+    ctx_obj = ctx.ensure_object(MeasureContext)
     
-    ctx.obj["logger"] = logger
+    if ctx_obj.logger is None:
+        ctx_obj.logger = logging.getLogger("analyzer")
+        ctx_obj.logger.setLevel(log_level)
+    
     debug = log_level == "DEBUG"
     
     with click.open_file(config_path) as config_file:
-        configs = yaml.safe_load(config_file)
-    
-    ctx.obj["configs"] = configs
+        ctx_obj.configs = yaml.safe_load(config_file)
     
     try:
         if db_url is None:
             db_url = get_db_url()
         engine = create_engine(db_url, echo="debug" if debug else False)
         session = Session(bind=engine, autoflush=False, autocommit=False, future=True)
-        ctx.obj["session"] = session
+        ctx_obj.session = session
         ctx.with_resource(session)
     
     except OperationalError as e:
         if "Access denied" in str(e):
-            logger.warning(
+            ctx_obj.logger.warning(
                 "Access denied to database. Try again or run set-db command to set new credentials."
             )
         else:
-            logger.error(f"Error connecting to database: {e}")
+            ctx_obj.logger.error(f"Error connecting to database: {e}")
             sentry_sdk.capture_exception(e)
         ctx.exit(1)
     
     instrument_factory = InstrumentFactory()
-    ctx.obj["instruments"] = {}
-    for key, instrument_config in configs["instruments"].items():
+    for key, instrument_config in ctx_obj.configs["instruments"].items():
         instrument = instrument_factory(instrument_config, simulate)
         ctx.with_resource(instrument)
-        ctx.obj["instruments"][key] = instrument
+        ctx_obj.instruments[key] = instrument

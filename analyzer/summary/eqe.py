@@ -3,14 +3,19 @@ from typing import Optional
 
 import click
 import pandas as pd
+from click.exceptions import Exit
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from sqlalchemy import text
 from sqlalchemy.orm import (
-    Session,
+    Query,
     joinedload,
 )
 
+from ..context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
 from orm import (
     EqeConditions,
     EqeSession,
@@ -22,7 +27,7 @@ from utils import (
 
 
 @click.command(name="eqe", help="Make summary for EQE measurements' data.")
-@click.pass_context
+@pass_analyzer_context
 @click.option(
     "-w",
     "--wafer",
@@ -43,26 +48,24 @@ from utils import (
     help="Exclude reference measurements from the plots",
 )
 def summary_eqe(
-    ctx: click.Context,
+    ctx: AnalyzerContext,
     wafer_name: Optional[str],
     eqe_session: Optional[EqeSession],
     no_ref: bool,
 ):
     if eqe_session and wafer_name:
-        ctx.obj["logger"].error(
+        raise click.UsageError(
             "--wafer and --session options are not allowed to use simultaneously"
         )
-        ctx.exit(1)
     elif not eqe_session and not wafer_name:
-        ctx.obj["logger"].error("Neither --wafer nor --session are specified")
-        ctx.exit(1)
+        raise click.UsageError("Neither --wafer nor --session are specified")
     title = f"{wafer_name} wafer" if wafer_name else f"{eqe_session.date} session"
     
-    conditions = query_eqe_conditions(ctx, eqe_session, wafer_name)
+    conditions = query_eqe_conditions(eqe_session, wafer_name)
     if not conditions:
-        ctx.obj["logger"].warning("No measurements found.")
-        ctx.exit()
-    ctx.obj["logger"].info("EQE data is loaded.")
+        ctx.logger.warning("No measurements found.")
+        raise Exit(0)
+    ctx.logger.info("EQE data is loaded.")
     
     file_name = f"Summary-EQE-{title.replace(' ', '-')}"
     file_name = get_indexed_filename(file_name, ("png", "xlsx"))
@@ -71,14 +74,14 @@ def summary_eqe(
     fig = get_eqe_plot_figure(eqe_session, no_ref)
     fig.suptitle(f"EQE summary for {title}")
     fig.savefig(png_file_name, dpi=300)
-    ctx.obj["logger"].info(f"EQE data is plotted to {png_file_name}")
+    ctx.logger.info(f"EQE data is plotted to {png_file_name}")
     
     sheets_data = get_sheets_eqe_data(conditions)
     with pd.ExcelWriter(exel_file_name) as writer:
         for sheet_data in sheets_data:
             sheet_data["df"].to_excel(writer, sheet_name=sheet_data["name"])
     
-    ctx.obj["logger"].info(f"Summary data is saved to {exel_file_name}")
+    ctx.logger.info(f"Summary data is saved to {exel_file_name}")
 
 
 def get_eqe_plot_figure(sheets_data, no_ref=False) -> plt.Figure:
@@ -101,17 +104,17 @@ def get_eqe_plot_figure(sheets_data, no_ref=False) -> plt.Figure:
     return fig
 
 
-def query_eqe_conditions(ctx, eqe_session, wafer_name) -> list[EqeConditions]:
-    session: Session = ctx.obj["session"]
-    query = (
-        session.query(EqeConditions)
+@pass_analyzer_context
+def query_eqe_conditions(ctx: AnalyzerContext, eqe_session, wafer_name) -> list[EqeConditions]:
+    query: Query = (
+        ctx.session.query(EqeConditions)
         .options(joinedload(EqeConditions.chip))
         .options(joinedload(EqeConditions.measurements))
     )
     if eqe_session:
         query = query.filter(EqeConditions.session == eqe_session)
     if wafer_name:
-        eqe_session_ids = session.execute(
+        eqe_session_ids = ctx.session.execute(
             text("""
         SELECT DISTINCT eqe_conditions.session_id FROM eqe_conditions
         WHERE eqe_conditions.chip_id IN (
@@ -123,8 +126,8 @@ def query_eqe_conditions(ctx, eqe_session, wafer_name) -> list[EqeConditions]:
         ).all()
         
         if not eqe_session_ids:
-            ctx.obj["logger"].warning("No EQE sessions were found for given wafer name")
-            ctx.exit()
+            ctx.logger.warning("No EQE sessions were found for given wafer name")
+            raise Exit(0)
         query = query.filter(EqeConditions.session_id.in_(chain.from_iterable(eqe_session_ids)))
     conditions = query.all()
     return conditions

@@ -11,6 +11,7 @@ from orm import ClientVersion
 from utils import get_db_url
 from version import VERSION
 from .compare import compare_group
+from .context import AnalyzerContext
 from .db import (
     db_group,
     set_db,
@@ -43,18 +44,15 @@ LOGO = """
 )
 @click.option("--db-url", help="Database URL.", default=os.environ.get('DB_URL', None))
 def analyzer(ctx: click.Context, log_level: str, db_url: str | None):
-    ctx.obj = ctx.obj or {}
-    if "logger" in ctx.obj:
-        logger = ctx.obj.get("logger")
-    else:
-        logger = logging.getLogger("analyzer")
-        logger.setLevel(log_level)
+    ctx_obj = ctx.ensure_object(AnalyzerContext)
+    if ctx_obj.logger is None:
+        ctx_obj.logger = logging.getLogger("analyzer")
+        ctx_obj.logger.setLevel(log_level)
     
-    ctx.obj["logger"] = logger
     debug = log_level == "DEBUG"
     
     active_command = analyzer.commands[ctx.invoked_subcommand]
-    if active_command is not db_group:
+    if active_command is not db_group and ctx_obj.session is None:
         try:
             if db_url is None and not os.environ.get("DEV", False):
                 db_url = get_db_url()
@@ -62,18 +60,18 @@ def analyzer(ctx: click.Context, log_level: str, db_url: str | None):
             ctx.call_on_close(lambda: engine.dispose(close=True))
             session = Session(bind=engine, autoflush=False, autocommit=False, future=True)
             ctx.with_resource(session.begin())
-            ctx.obj["session"] = session
+            ctx_obj.session = session
             latest = session.query(ClientVersion).one()
             if ClientVersion(version=VERSION) < latest:
-                logger.warning(
+                ctx_obj.logger.warning(
                     f"Your analyzer version seems outdated. Your version {VERSION}, latest available version {latest.version}. Consider upgrading."
                 )
         except OperationalError as e:
             if "Access denied" in str(e):
-                logger.warning(
+                ctx_obj.logger.warning(
                     f"Access denied to database. Try again or run {set_db.name} command to set new credentials."
                 )
             else:
-                logger.error(f"Error connecting to database: {e}")
+                ctx_obj.logger.error(f"Error connecting to database: {e}")
                 sentry_sdk.capture_exception(e)
-            ctx.exit()
+            ctx.exit(1)

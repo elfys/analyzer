@@ -21,6 +21,10 @@ from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Fill
 from openpyxl.worksheet.worksheet import Worksheet
 
+from analyzer.context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
 from orm import (
     CVMeasurement,
     ChipState,
@@ -33,15 +37,20 @@ date_formats = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
 date_formats_help = f"Supported formats are: {', '.join((strftime(f) for f in date_formats))}."
 
 
-def get_slice_by_voltages(df: pd.DataFrame, voltages: Iterable[Decimal]) -> pd.DataFrame:
+@pass_analyzer_context
+def get_slice_by_voltages(
+    ctx: AnalyzerContext,
+    df: pd.DataFrame,
+    voltages: Iterable[Decimal]
+) -> pd.DataFrame:
     columns = sorted(voltages)
     slice_df = df[df.columns.intersection(columns)].copy()
     
     empty_cols = slice_df.isna().all(axis=0)
     if empty_cols.any():
-        click.get_current_context().obj["logger"].warning(
-            f"""The following voltages are not present in the data: {
-            [float(col) for col, val in empty_cols.items() if val]}."""
+        ctx.logger.warning(
+            "The following voltages are not present in the data: %s.",
+            [float(col) for col, val in empty_cols.items() if val]
         )
     slice_df.dropna(axis=1, how="all", inplace=True)
     return slice_df
@@ -177,7 +186,7 @@ def plot_data(
             
             if failure_map:
                 if voltage not in thresholds:
-                    click.get_current_context().obj["logger"].warning(
+                    click.get_current_context().obj.logger.warning(
                         f"Thresholds for {voltage}V are not found. Skipping."
                     )
                     continue

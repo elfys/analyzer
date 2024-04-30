@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 class AnalyzerContext:
     def __init__(
         self,
-        logger: logging.Logger = None,
-        session: Session = None,
+        logger: logging.Logger | None = None,
+        session: Session | None = None,
     ):
         self.logger = logger
         self.session = session

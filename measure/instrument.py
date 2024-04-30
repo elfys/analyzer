@@ -36,7 +36,7 @@ class PyVisaInstrument:
                 self.resource.close()
             except Exception:
                 pass
-            logger = logging.getLogger("analyzer")
+            logger = logging.getLogger("measure")
             logger.error(f"PYVISA error: {e}")
         
         if 'SMU 2636' in self.name:
@@ -60,7 +60,7 @@ class PyVisaInstrument:
         return getattr(self.resource, name)
     
     def check_errors(self, instrument: MessageBasedResource):
-        logger = logging.getLogger("analyzer")
+        logger = logging.getLogger("measure")
         while int(float(instrument.query("print(errorqueue.count)"))) > 0:
             error = instrument.query("print(errorqueue.next())")
             logger.warning(f"Instrument error: {error}")

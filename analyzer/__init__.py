@@ -3,7 +3,10 @@ import os
 
 import click
 import sentry_sdk
-from sqlalchemy import create_engine
+from sqlalchemy import (
+    URL,
+    create_engine,
+)
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -43,7 +46,7 @@ LOGO = """
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
 )
 @click.option("--db-url", help="Database URL.", default=os.environ.get('DB_URL', None))
-def analyzer(ctx: click.Context, log_level: str, db_url: str | None):
+def analyzer(ctx: click.Context, log_level: str, db_url: str | URL | None):
     ctx_obj = ctx.ensure_object(AnalyzerContext)
     if ctx_obj.logger is None:
         ctx_obj.logger = logging.getLogger("analyzer")

@@ -59,7 +59,7 @@ from .instrument import (
 @from_config("instruments.main.name", "instrument_name")
 def measure_iv_command(
     ctx: MeasureContext,
-    chip_names: tuple[str],
+    chip_names: tuple[str, ...],
     wafer_name: str,
     chip_state: ChipState,
     automatic: bool,
@@ -178,7 +178,7 @@ def create_measurements(
 
 
 def get_minimal_measurements():
-    prev_measurements: dict[str, list] = dict()
+    prev_measurements = {}
     while True:
         raw_measurements = get_raw_measurements()
         xdata = raw_measurements["voltage_input"]

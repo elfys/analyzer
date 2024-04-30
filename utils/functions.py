@@ -6,7 +6,11 @@ import click
 T = TypeVar("T")
 
 
-def select_one(items: list[T], prompt: str, id_name_getter: Callable[[T], (int, str)] = None) -> T:
+def select_one(
+    items: list[T],
+    prompt: str,
+    id_name_getter: Callable[[T], (int, str)] | None = None
+) -> T:
     if id_name_getter is None:
         
         def id_name_getter(x):

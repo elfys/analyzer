@@ -44,7 +44,7 @@ def measure_group(
     ctx_obj = ctx.ensure_object(MeasureContext)
     
     if ctx_obj.logger is None:
-        ctx_obj.logger = logging.getLogger("analyzer")
+        ctx_obj.logger = logging.getLogger("measure")
         ctx_obj.logger.setLevel(log_level)
     
     debug = log_level == "DEBUG"

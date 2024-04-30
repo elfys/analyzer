@@ -10,7 +10,6 @@ from analyzer.show import show_wafers
 from orm import (
     Chip,
     Wafer,
-    XChip,
 )
 
 
@@ -34,6 +33,7 @@ class TestShowWafers:
                 record_created_at=datetime(2023, 2, 11),
             ),
         ]
+        from orm.chip import XChip  # noqa: F401
         for i, wafer in enumerate(wafers):
             wafer.chips = [XChip(name=f"X{j:04}") for j in range(self.chip_numbers[i])]
         

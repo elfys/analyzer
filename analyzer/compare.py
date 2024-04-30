@@ -1,6 +1,9 @@
 from decimal import Decimal
 from time import strftime
-from typing import Iterable
+from typing import (
+    Iterable,
+    Sequence,
+)
 
 import click
 import numpy as np
@@ -62,7 +65,7 @@ from .context import (
     show_default="wafers-comparison-{datetime}.xlsx",
 )
 def compare_wafers(
-    ctx: AnalyzerContext, wafer_names: set[str], chip_states: tuple[EntityOption], file_name: str
+    ctx: AnalyzerContext, wafer_names: set[str], chip_states: Sequence[ChipState], file_name: str
 ):
     wafer_names = set(map(lambda x: x.upper(), wafer_names))
     wafers = ctx.session.execute(select(Wafer).filter(Wafer.name.in_(wafer_names))).scalars().all()

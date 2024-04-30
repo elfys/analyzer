@@ -16,10 +16,10 @@ from .instrument import InstrumentsTypes
 class MeasureContext:
     def __init__(
         self,
-        logger: logging.Logger = None,
-        session: Session = None,
-        instruments: dict[str, InstrumentsTypes] = None,
-        configs: dict = None
+        logger: logging.Logger | None = None,
+        session: Session | None = None,
+        instruments: dict[str, InstrumentsTypes] | None = None,
+        configs: dict | None = None
     ):
         self.logger = logger
         self.session = session

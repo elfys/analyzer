@@ -33,6 +33,7 @@ pyvisa-sim = "*"
 pylint = "*"
 flake8 = "*"
 black = "*"
+typeguard = "*"
 
 [requires]
 python_version = "3.12.2"

@@ -5,6 +5,7 @@ from datetime import (
 from decimal import Decimal
 from typing import (
     Iterable,
+    Sequence,
 )
 
 import click
@@ -17,18 +18,6 @@ from sqlalchemy.orm import (
     undefer,
 )
 
-from ..context import (
-    AnalyzerContext,
-    pass_analyzer_context,
-)
-from .common import (
-    apply_conditional_formatting,
-    date_formats,
-    date_formats_help,
-    get_info,
-    get_slice_by_voltages,
-    plot_data,
-)
 from orm import (
     Chip,
     ChipState,
@@ -40,6 +29,18 @@ from utils import (
     EntityOption,
     get_indexed_filename,
     get_thresholds,
+)
+from .common import (
+    apply_conditional_formatting,
+    date_formats,
+    date_formats_help,
+    get_info,
+    get_slice_by_voltages,
+    plot_data,
+)
+from ..context import (
+    AnalyzerContext,
+    pass_analyzer_context,
 )
 
 
@@ -80,7 +81,7 @@ def summary_iv(
     ctx: AnalyzerContext,
     chips_type: str | None,
     wafer_name: str,
-    chip_states: tuple[ChipState],
+    chip_states: Sequence[ChipState],
     quantile: tuple[float, float],
     before: datetime | None,
     after: datetime | None,

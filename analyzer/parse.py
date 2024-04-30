@@ -212,14 +212,14 @@ def guess_chip_and_wafer(
     return chip, wafer
 
 
-def ask_chip_name(default: str = None) -> str:
+def ask_chip_name(default: str | None = None) -> str:
     chip_name = None
     while chip_name is None:
         chip_name = click.prompt("Input chip name", default=default, show_default=True)
     return chip_name.upper()
 
 
-def ask_wafer_name(default: str = None) -> str:
+def ask_wafer_name(default: str | None = None) -> str:
     wafer_name = click.prompt(
         f"Input wafer name ({'press Enter to confirm default value ' if default else ''}or type 'skip' or 'exit')",
         type=str,

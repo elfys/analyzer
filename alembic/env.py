@@ -10,7 +10,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import URL
 
-from analyzer.db import dump_db
 from orm import Base
 
 # this is the Alembic Config object, which provides
@@ -65,6 +64,8 @@ def run_migrations_online() -> None:
         logger = logging.getLogger("alembic.runtime.migration")
         logger.warning("Running migrations in production mode.")
         click.confirm("Do you want to continue?", abort=True)
+        
+        from analyzer.db import dump_db
         db_url_or_error_code = dump_db(
             args=[],
             windows_expand_args=False,

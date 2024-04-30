@@ -1,8 +1,11 @@
 import keyring
-from sqlalchemy import engine
+from sqlalchemy import (
+    URL,
+    engine,
+)
 
 
-def get_db_url(username=None, password=None, host=None) -> engine.URL:
+def get_db_url(username=None, password=None, host=None) -> URL:
     if username is None:
         username = keyring.get_password("ELFYS_DB", "USER")
     if password is None:

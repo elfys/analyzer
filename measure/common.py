@@ -1,4 +1,7 @@
-from typing import Optional
+from typing import (
+    Optional,
+    Sequence,
+)
 
 import click
 import pandas as pd
@@ -33,7 +36,7 @@ def execute_command(instrument: PyVisaInstrument, command: str, command_type: st
 
 @pass_measure_context
 @from_config("measure", "commands")
-def get_raw_measurements(ctx: MeasureContext, /, commands: dict) -> dict[str, list]:
+def get_raw_measurements(ctx: MeasureContext, /, commands: list[dict]) -> dict[str, list]:
     instrument: PyVisaInstrument = ctx.instruments["main"]
     measurements: dict[str, list] = {}
     for command in commands:
@@ -54,7 +57,7 @@ def validate_measurements(
     if not validation_config:
         return
     
-    error_msg = _validate_measurements(raw_measurements, validation_config)
+    error_msg = do_validation(raw_measurements, validation_config)
     if error_msg is None:
         return
     
@@ -69,10 +72,8 @@ def validate_measurements(
         abort=True, default=True, err=True)
 
 
-def _validate_measurements(
-    measurements: dict[str, list], configs: dict[str, dict[dict]]
-) -> Optional[str]:
-    for value_name, config in configs.items():
+def do_validation(measurements: dict[str, list], rules: dict) -> Optional[str]:
+    for value_name, config in rules.items():
         for validator_name, rules in config.items():
             path = parse(value_name)
             for ctx in path.find(measurements):
@@ -90,7 +91,7 @@ def _validate_measurements(
     return None
 
 
-def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: list[str]):
+def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: Sequence[str]):
     configs = ctx.find_object(MeasureContext).configs
     chip_names = [name.upper() for name in chip_names]
     base_error_msg = f"{param.opts[0]} parameter is invalid. %s"

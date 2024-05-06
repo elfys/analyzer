@@ -6,8 +6,6 @@ from decimal import Decimal
 from typing import (
     Any,
     Iterable,
-    Optional,
-    Union,
 )
 
 import click
@@ -77,12 +75,12 @@ from utils import (
 )
 def summary_iv(
     ctx: click.Context,
-    chips_type: Optional[str],
+    chips_type: str | None,
     wafer_name: str,
     chip_states: tuple[ChipState],
     quantile: tuple[float, float],
-    before: Optional[datetime],
-    after: Optional[datetime],
+    before: datetime | None,
+    after: datetime | None,
 ):
     session: Session = ctx.obj["session"]
     if ctx.obj["default_wafer"].name != wafer_name:
@@ -177,7 +175,7 @@ def summary_iv(
 
 
 def save_iv_summary_to_excel(
-    sheets_data: dict[str, Union[pd.DataFrame, Any]],
+    sheets_data, # TODO: add type
     info: pd.Series,
     file_name: str,
     voltages: Iterable[Decimal],
@@ -210,7 +208,7 @@ def save_iv_summary_to_excel(
 
 def get_sheets_iv_data(
     measurements: Iterable[IVMeasurement],
-) -> dict[str, Union[pd.DataFrame, Any]]:
+): # TODO: annotate return type
     anode_df = pd.DataFrame(dtype="float64")
     cathode_df = pd.DataFrame(dtype="float64")
     guard_ring_df = pd.DataFrame(dtype="float64")

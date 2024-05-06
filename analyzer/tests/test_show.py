@@ -10,6 +10,7 @@ from analyzer.show import show_wafers
 from orm import (
     Chip,
     Wafer,
+    XChip,
 )
 
 
@@ -34,7 +35,7 @@ class TestShowWafers:
             ),
         ]
         for i, wafer in enumerate(wafers):
-            wafer.chips = [Chip(name=f"X{j:04}") for j in range(self.chip_numbers[i])]
+            wafer.chips = [XChip(name=f"X{j:04}") for j in range(self.chip_numbers[i])]
         
         session.add_all(wafers)
         session.commit()

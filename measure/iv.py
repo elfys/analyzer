@@ -75,7 +75,7 @@ def measure_iv_command(
             matrix_name=chip_names[0], wafer_name=wafer_name, matrix_config=matrix_config
         )
     else:
-        chips = ChipRepository(session).get_chips_for_names(chip_names, wafer_name)
+        chips = ChipRepository(session).get_or_create_chips_for_wafer(chip_names, wafer_name)
     session.commit()
     
     for setup_config in configs["setups"]:
@@ -150,10 +150,11 @@ def measure_setup(
     
     iv_cond_repo = IvConditionsRepository(session)
     for chip, chip_config in zip(chips, chip_configs, strict=True):
-        iv_cond_repo.create(
+        iv_conditions = iv_cond_repo.create(
             chip=chip, temperature=temperature, **conditions_kwargs,
             measurements=create_measurements(raw_measurements, temperature, chip_config),
         )
+        session.add(iv_conditions)
 
 
 @from_context("configs.instruments.main", "instrument_config")

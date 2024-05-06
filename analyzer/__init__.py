@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Union
 
 import click
 import sentry_sdk
@@ -43,7 +42,7 @@ LOGO = """
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
 )
 @click.option("--db-url", help="Database URL.", default=os.environ.get('DB_URL', None))
-def analyzer(ctx: click.Context, log_level: str, db_url: Union[str, None]):
+def analyzer(ctx: click.Context, log_level: str, db_url: str | None):
     ctx.obj = ctx.obj or {}
     if "logger" in ctx.obj:
         logger = ctx.obj.get("logger")

@@ -1,14 +1,11 @@
-import functools
 import re
 from typing import (
-    List,
-    Optional,
-    Union,
+    ClassVar,
+    Type,
+    TypeGuard,
 )
 
-import click
 from sqlalchemy import (
-    ExecutionContext,
     ForeignKey,
     Integer,
     String,
@@ -22,41 +19,66 @@ from sqlalchemy.orm import (
     validates,
 )
 
-from .abstract_repository import AbstractRepository
+from .abstract_repository import (
+    AbstractRepository,
+    Model,
+)
 from .base import Base
 
 
-@functools.lru_cache()
-def get_chip_name_re() -> re.Pattern:
-    known_chip_types = Chip.chip_sizes.keys()
-    postfix_re = r"(H|M)?"
-    pattern = rf"^(?P<type>[{''.join(known_chip_types)}]{postfix_re})(?P<number>\d{{4}})"
-    return re.compile(pattern, re.IGNORECASE)
-
-
-def infer_chip_type(ctx: ExecutionContext) -> Union[str, None]:
-    if ctx.get_current_parameters()["test_structure"]:
-        return "TS"
+class ChipCollectionMeta(type):
+    def __init__(cls, name, bases, dct):
+        super().__init__(name, bases, dct)
+        if chip_sizes := dct.get("chip_sizes"):
+            for chip_type, chip_size in chip_sizes.items():
+                cls.create_chip_class(chip_type, chip_size)
     
-    chip_name = ctx.get_current_parameters()["name"]
-    match = get_chip_name_re().match(chip_name.upper())
-    if match:
-        return match.group("type")
-    
-    return None
+    def create_chip_class(cls, chip_type, chip_size):
+        class_name = f"{chip_type}Chip"
+        chip_class = type(
+            class_name,
+            (cls,),
+            {
+                '__mapper_args__': {'polymorphic_identity': chip_type},
+                'chip_size': chip_size,
+                '__chip_type__': chip_type,
+            }
+        )
+        globals()[class_name] = chip_class
 
 
-def validate_chip_name(name: str) -> str:
-    match = get_chip_name_re().match(name.upper())
-    if not match:
-        raise click.BadParameter(f"{name} is not valid chip name.")
-    
-    return f"{match.group('type')}{match.group('number')}"
+class BaseMeta(type(Base), ChipCollectionMeta):
+    pass
 
 
-class Chip(Base):
+class Chip(Base, metaclass=BaseMeta):
     __tablename__ = "chip"
     __table_args__ = tuple([UniqueConstraint("name", "wafer_id", name="unique_chip")])
+    __mapper_args__ = {
+        "polymorphic_on": 'type',
+        "polymorphic_abstract": True,
+    }
+    __chip_type__: str
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    wafer_id: Mapped[int] = mapped_column(
+        ForeignKey("wafer.id", name="chip__wafer", ondelete="RESTRICT", onupdate="CASCADE"),
+        index=True,
+    )
+    wafer: Mapped["Wafer"] = relationship(back_populates="chips")  # noqa: F821
+    name: Mapped[str] = mapped_column(String(length=20))
+    type: Mapped[str] = mapped_column(String(length=8), index=True, nullable=True)
+    
+    @validates("name")
+    def validate_name(self, key: str, name: str) -> str:
+        return name.upper()
+    
+    def __repr__(self):
+        return f"<{self.__class__.__name__}(id={self.id} name='{self.name}')>"
+
+
+class SimpleChip(Chip):  # all chips with size, have IV and CV measurements
+    __mapper_args__ = {"polymorphic_abstract": True}
     
     chip_sizes = {
         "A": (1.69, 1.69),
@@ -66,15 +88,8 @@ class Chip(Base):
         "E": (1.806, 1.806),
         "F": (2.56, 1.25),
         "G": (1.4, 3.25),
-        "I": ...,
-        "J": ...,
-        "L": ...,
-        "Q": (.448, .540),  # one pixel out of 9
-        "R": (.830, .665),  # one pixel out of 9
         "S": (1.825, 1.825),
         "T": (1.45, 1.45),
-        "U": (5, 5),
-        "UH": (5, 5),
         "V": (10, 10),
         "VH": (10, 10),
         "X": (1, 1),
@@ -82,95 +97,157 @@ class Chip(Base):
         "Y": (2, 2),
         "YH": (2, 2),
     }
+    chip_size: ClassVar[tuple[float, float]]
     
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    wafer_id: Mapped[int] = mapped_column(
-        ForeignKey("wafer.id", name="chip__wafer", ondelete="RESTRICT", onupdate="CASCADE"),
-        index=True,
-    )
-    wafer: Mapped["Wafer"] = relationship(back_populates="chips")  # noqa: F821
-    name: Mapped[str] = mapped_column(String(length=20))
-    type: Mapped[str] = mapped_column(
-        String(length=8), default=infer_chip_type, index=True, nullable=True
-    )
-    test_structure: Mapped[bool] = mapped_column(default=False)
-    iv_conditions: Mapped[List["IvConditions"]] = relationship(back_populates="chip")  # noqa: F821
-    cv_measurements: Mapped[List["CVMeasurement"]] = relationship(  # noqa: F821
+    iv_conditions: Mapped[list["IvConditions"]] = relationship(back_populates="chip")  # noqa: F821
+    cv_measurements: Mapped[list["CVMeasurement"]] = relationship(  # noqa: F821
         back_populates="chip"
     )
-    eqe_conditions: Mapped[List["EqeConditions"]] = relationship(  # noqa: F821
-        back_populates="chip"
-    )
-    matrix_id: Mapped[Optional[int]] = mapped_column(
+    
+    @property
+    def x_coordinate(self):
+        digits = re.sub(rf'^{self.type}', '', self.name)
+        if not digits.isdigit() or len(digits) != 4:
+            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
+        return int(digits[0:2])
+    
+    @property
+    def y_coordinate(self):
+        digits = re.sub(rf'^{self.type}', '', self.name)
+        if not digits.isdigit() or len(digits) != 4:
+            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
+        return int(digits[2:4])
+    
+    @classmethod
+    def get_area(cls) -> float:
+        return cls.chip_size[0] * cls.chip_size[1]
+    
+    @classmethod
+    def get_perimeter(cls) -> float:
+        return (cls.chip_size[0] + cls.chip_size[1]) * 2
+
+
+class TestStructureChip(Chip):
+    __mapper_args__ = {"polymorphic_identity": "TS"}
+    
+    ts_conditions: Mapped[list["TsConditions"]] = relationship(back_populates="chip")  # noqa: F821
+
+
+class MatrixChip(SimpleChip):
+    __mapper_args__ = {"polymorphic_abstract": True}
+    chip_sizes = {
+        "Q": (.448, .540),  # one pixel out of 9
+        "R": (.830, .665),  # one pixel out of 9
+    }
+    
+    matrix_id: Mapped[int | None] = mapped_column(
         ForeignKey("matrix.id", name="chip__matrix", ondelete="CASCADE", onupdate="CASCADE"),
         index=True,
     )
     matrix: Mapped["Matrix"] = relationship(back_populates="chips")  # noqa: F821
-    
-    @validates("name")
-    def validate_name(self, key: str, name: str) -> str:
-        return name.upper()
-    
-    @property
-    def x_coordinate(self):
-        if self.test_structure:
-            raise ValueError("Test structure chips do not have coordinates")
-        match = get_chip_name_re().match(self.name)
-        if match.group("number"):
-            return int(match.group("number")[0:2])
-        else:
-            raise ValueError(f"Could not parse chip coordinate {self.name}")
-    
-    @property
-    def y_coordinate(self):
-        if self.test_structure:
-            raise ValueError("Test structure chips do not have coordinates")
-        match = get_chip_name_re().match(self.name)
-        if match.group("number"):
-            return int(match.group("number")[2:4])
-        else:
-            raise ValueError(f"Could not parse chip coordinate {self.name}")
-    
-    @property
-    def area(self):
-        if self.test_structure:
-            raise ValueError("Test structure chips do not have area")
-        return Chip.get_area(self.type)
-    
-    @staticmethod
-    def get_area(chip_type: str) -> float:
-        return Chip.chip_sizes[chip_type][0] * Chip.chip_sizes[chip_type][1]
-    
-    @staticmethod
-    def get_perimeter(chip_type: str) -> float:
-        return (Chip.chip_sizes[chip_type][0] + Chip.chip_sizes[chip_type][1]) * 2
-    
-    @property
-    def perimeter(self) -> float:
-        return Chip.get_perimeter(self.type)
-    
-    @staticmethod
-    def get_types() -> list[str]:
-        return list(Chip.chip_sizes.keys())
-    
-    def __repr__(self):
-        return f"<Chip(id={self.id} name='{self.name}')>"
 
 
-class ChipRepository(AbstractRepository[Chip]):
+class EqeChip(SimpleChip):
+    __mapper_args__ = {"polymorphic_abstract": True}
+    eqe_conditions: Mapped[list["EqeConditions"]] = relationship(  # noqa: F821
+        back_populates="chip"
+    )
+    
+    chip_sizes = {
+        "U": (5, 5),
+        "UH": (5, 5),
+        "I": ...,
+        "IH": ...,
+        "IM": ...,
+        "J": ...,
+        "JH": ...,
+        "JM": ...,
+        "L": ...,
+        "LH": ...,
+        "LM": ...,
+        "REF": ...,
+    }
+
+
+class ChipRepositoryMeta(type):
+    def __init__(cls, name, bases, dct):
+        super().__init__(name, bases, dct)
+        subclasses = ChipRepositoryMeta.get_all_subclasses(Chip)
+        cls.chip_types = {
+            subclass.__mapper_args__["polymorphic_identity"]: subclass
+            for subclass in subclasses
+            if "polymorphic_identity" in subclass.__mapper_args__}
+    
+    def get_all_subclasses(cls: type[Chip]) -> list[type[Chip]]:
+        all_subclasses = []
+        
+        for subclass in cls.__subclasses__():
+            all_subclasses.append(subclass)
+            all_subclasses.extend(ChipRepositoryMeta.get_all_subclasses(subclass))
+        
+        return all_subclasses
+
+
+def is_simple_chip_type(cls: type(Chip)) -> TypeGuard[Type[SimpleChip]]:
+    return issubclass(cls, SimpleChip)
+
+
+class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
     model = Chip
+    chip_types: dict[str, type[Chip]]
     
-    def get_chips_for_names(self, chip_names, wafer_name) -> list[Chip]:
+    @classmethod
+    def get_area(cls, chip_type: str) -> float:
+        chip_cls = ChipRepository.chip_types[chip_type]
+        if not is_simple_chip_type(chip_cls):
+            raise AttributeError(f"Chip class {chip_cls.__name__} has no get_area method")
+        else:
+            return chip_cls.get_area()
+    
+    @classmethod
+    def get_perimeter(cls, chip_type: str) -> float:
+        chip_cls = ChipRepository.chip_types[chip_type]
+        if not is_simple_chip_type(chip_cls):
+            raise AttributeError(f"Chip class {chip_cls.__name__} has no get_perimeter method")
+        else:
+            return chip_cls.get_perimeter()
+    
+    @classmethod
+    def infer_chip_type(cls, chip_name: str) -> str:
+        match = re.match(r"^[A-Z]+", chip_name)
+        if match is None:
+            raise ValueError(f"Could not infer chip type from name {chip_name}")
+        chip_type = match.group(0)
+        if chip_type not in cls.chip_types:
+            raise ValueError(f"Unknown chip type {chip_type}")
+        return match.group(0)
+    
+    @classmethod
+    def create(cls, **kwargs) -> Model:
+        if (chip_type := kwargs.get('type')) is None:
+            chip_type = ChipRepository.infer_chip_type(kwargs["name"])
+            kwargs["type"] = chip_type
+        else:
+            if chip_type not in cls.chip_types:
+                raise ValueError(f"Unknown chip type {chip_type}")
+        model = cls.chip_types[chip_type]
+        try:
+            chip = model(**kwargs)
+        except TypeError:
+            raise ValueError(f"Could not create chip of type {model.__name__} with arguments {kwargs}")
+        return chip
+    
+    def get_or_create_chips_for_wafer(self, chip_names, wafer_name) -> list[Chip]:
         from .wafer import (
             Wafer,
             WaferRepository,
         )
-        chip_names = {name.upper() for name in chip_names}
         wafer_repo = WaferRepository(self.session)
         wafer = wafer_repo.get_or_create(name=wafer_name, query_options=joinedload(Wafer.chips))
         existing_chip_names = {chip.name.upper() for chip in wafer.chips}
-        chip_names_to_create = chip_names - existing_chip_names
+        chip_names_to_create = {name.upper() for name in chip_names} - existing_chip_names
         
         for chip_name in chip_names_to_create:
             self.create(name=chip_name, wafer=wafer)
-        return [c for c in wafer.chips if c.name.upper() in chip_names]
+        chips_dict = {chip.name: chip for chip in wafer.chips}
+        return [chips_dict[chip_name] for chip_name in chip_names]

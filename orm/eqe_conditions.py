@@ -30,7 +30,7 @@ class EqeConditions(Base):
         ),
         index=True,
     )
-    chip: Mapped["Chip"] = relationship(back_populates="eqe_conditions")  # noqa: F821
+    chip: Mapped["EqeChip"] = relationship(back_populates="eqe_conditions")  # noqa: F821
     chip_state_id: Mapped[int] = mapped_column(
         ForeignKey(
             "chip_state.id",

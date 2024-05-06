@@ -30,7 +30,7 @@ class IvConditions(Base):
         ),
         index=True,
     )
-    chip: Mapped["Chip"] = relationship(back_populates="iv_conditions")  # noqa: F821
+    chip: Mapped["SimpleChip"] = relationship(back_populates="iv_conditions")  # noqa: F821
     chip_state_id: Mapped[int] = mapped_column(
         ForeignKey(
             "chip_state.id",
@@ -64,6 +64,7 @@ class IvConditions(Base):
     
     def __repr__(self):
         return f"<IvConditions(id={self.id}, datetime={self.datetime}>"
+
 
 class IvConditionsRepository(AbstractRepository[IvConditions]):
     model = IvConditions

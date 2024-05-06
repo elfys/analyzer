@@ -8,7 +8,7 @@ from click.testing import CliRunner
 from analyzer import analyzer
 from analyzer.compare import compare_wafers
 from orm import (
-    Chip,
+    ChipRepository,
     IVMeasurement,
     IvConditions,
     Wafer,
@@ -35,7 +35,7 @@ class TestCompareWafers:
     
     @pytest.fixture(scope="class")
     def chips(self):
-        yield [Chip(name=chip_name) for chip_name in self.chip_names]
+        yield [ChipRepository.create(name=chip_name) for chip_name in self.chip_names]
     
     @pytest.fixture(scope="class")
     def iv_conditions(self, chips):

@@ -50,7 +50,7 @@ def cv(
 ):
     session: Session = ctx.obj["session"]
     configs: dict = ctx.obj["configs"]
-    chips = ChipRepository(session).get_chips_for_names(chip_names, wafer_name)
+    chips = ChipRepository(session).get_or_create_chips_for_wafer(chip_names, wafer_name)
     
     for setup_config in configs["setups"]:
         ctx.obj["logger"].info(f'Executing setup {setup_config["name"]}')

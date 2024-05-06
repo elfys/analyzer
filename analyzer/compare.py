@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from orm import (
     Chip,
+    ChipRepository,
     ChipState,
     IVMeasurement,
     IvConditions,
@@ -121,7 +122,7 @@ def get_sheets_data(ctx: click.Context, session, wafers: Iterable[Wafer]) -> dic
         .join(IvConditions.chip)
         .filter(
             Chip.wafer_id == bindparam("wafer_id"),
-            Chip.test_structure.is_(False),
+            Chip.type != "TS",
             IVMeasurement.voltage_input.in_(threshold_voltages),
         )
         .order_by(IvConditions.datetime)
@@ -184,7 +185,7 @@ def get_sheets_data(ctx: click.Context, session, wafers: Iterable[Wafer]) -> dic
 def get_density_frame(values_frame):
     def divide_by_area(frame):
         chip_type = frame.name
-        return frame / Chip.get_area(chip_type)
+        return frame / ChipRepository.get_area(chip_type)
     
     density_frame = (
         values_frame.groupby("chip_type")
@@ -240,7 +241,9 @@ def add_perimeter_area_level(index: pd.MultiIndex) -> pd.MultiIndex:
     idx_tuples = []
     for col in index.values:
         voltage, chip_type = col
-        perimeter_area = Chip.get_perimeter(chip_type) / Chip.get_area(chip_type)
+        perimeter = ChipRepository.get_perimeter(chip_type)
+        area = ChipRepository.get_area(chip_type)
+        perimeter_area = perimeter / area
         idx_tuples.append((voltage, chip_type, Decimal(perimeter_area).quantize(Decimal("0.001"))))
     return pd.MultiIndex.from_tuples(idx_tuples, names=[*index.names, "Perimeter / area"])
 

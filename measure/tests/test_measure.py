@@ -108,7 +108,7 @@ class TestMeasureIVAutomatic:
     
     @pytest.mark.parametrize("config_path, input, chip_names", [
         ('measure/iv-to-can.yaml', None, ["X0506", "X0507", "X0508"]),
-        ('measure/iv-matrix.yaml', None, ["X0509"]),
+        ('measure/iv-matrix.yaml', None, ["R0509"]),
     ])
     def test_multichip_config_return_ok(self, runner: CliRunner, db_url, config_path: str, input: str, chip_names: list[str]):
         result = runner.invoke(

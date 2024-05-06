@@ -24,7 +24,7 @@ class CVMeasurement(Base):
         ForeignKey("chip.id", name="cv_data__chip", ondelete="CASCADE", onupdate="CASCADE"),
         index=True,
     )
-    chip: Mapped["Chip"] = relationship(back_populates="cv_measurements")  # noqa: F821
+    chip: Mapped["SimpleChip"] = relationship(back_populates="cv_measurements")  # noqa: F821
     chip_state_id: Mapped[int] = mapped_column(
         ForeignKey(
             "chip_state.id",

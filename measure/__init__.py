@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Union
 
 import click
 import sentry_sdk
@@ -40,7 +39,7 @@ def measure_group(
     ctx: click.Context,
     config_path: str,
     log_level: str,
-    db_url: Union[str, None],
+    db_url: str | None,
     simulate: bool,
 ):
     ctx.obj = ctx.obj or {}

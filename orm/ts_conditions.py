@@ -39,7 +39,7 @@ class TsConditions(Base):
         ),
         index=True,
     )
-    chip: Mapped["Chip"] = relationship()  # noqa: F821
+    chip: Mapped["TestStructureChip"] = relationship(back_populates="ts_conditions")  # noqa: F821
     measurements: Mapped[list["TsMeasurement"]] = relationship(  # noqa: F821
         back_populates="conditions"
     )

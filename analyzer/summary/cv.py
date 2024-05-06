@@ -6,16 +6,19 @@ from decimal import Decimal
 from typing import (
     Any,
     Iterable,
-    Union,
+    List,
 )
 
 import click
 import pandas as pd
 from openpyxl.styles import PatternFill
+from pandas import DataFrame
 from sqlalchemy.orm import (
+    InstrumentedAttribute,
     Session,
     joinedload,
 )
+from sqlalchemy.orm.base import _T_co
 
 from analyzer.summary.common import (
     apply_conditional_formatting,
@@ -73,12 +76,12 @@ from utils import (
 )
 def summary_cv(
     ctx: click.Context,
-    chips_type: Union[str, None],
+    chips_type: str | None,
     wafer_name: str,
     chip_states: list[ChipState],
     quantile: tuple[float, float],
-    before: Union[datetime, None],
-    after: Union[datetime, None],
+    before: datetime | None,
+    after: datetime | None,
 ):
     session: Session = ctx.obj["session"]
     if ctx.obj["default_wafer"].name != wafer_name:
@@ -147,6 +150,11 @@ def summary_cv(
     ctx.obj["logger"].info(f"Summary data is saved to {exel_file_name}")
 
 
+# class SheetsCVData(TypedDict): # TODO: finish this
+#     capacitance: DataFrame
+#     chip_names: List[str]
+#     voltages: List[Decimal]
+
 def save_cv_summary_to_excel(
     sheets_data: dict,
     info: pd.Series,
@@ -174,10 +182,10 @@ def save_cv_summary_to_excel(
 
 def get_sheets_cv_data(
     measurements: list[CVMeasurement],
-) -> dict[str, Union[pd.DataFrame, Any]]:
-    chip_names = sorted({measurement.chip.name for measurement in measurements})
-    voltages = sorted({measurement.voltage_input for measurement in measurements})
-    capacitance_df = pd.DataFrame(dtype="float64", index=chip_names, columns=voltages)
+) -> dict[str, pd.DataFrame | Any]:
+    chip_names: list[str] = sorted({measurement.chip.name for measurement in measurements})
+    voltages: list[Decimal] = sorted({measurement.voltage_input for measurement in measurements})
+    capacitance_df: DataFrame = pd.DataFrame(dtype="float64", index=chip_names, columns=voltages)
     with click.progressbar(measurements, label="Processing measurements...") as progress:
         for measurement in progress:
             measurement: CVMeasurement

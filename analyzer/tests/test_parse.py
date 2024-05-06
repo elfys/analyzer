@@ -21,6 +21,7 @@ from orm import (
     CVMeasurement,
     Chip,
     EqeConditions,
+    TestStructureChip,
     TsConditions,
     TsMeasurement,
     Wafer,
@@ -324,8 +325,10 @@ class TestParseTs:
         assert result.exit_code == 0
         
         conditions = session.query(TsConditions).order_by(TsConditions.id.desc()).first()
+        assert log_handler.records[0].message == f"Found 1 files matching pattern {file}"
         assert conditions.chip.name == chip_name
-        assert conditions.chip.test_structure is True
+        assert conditions.chip.type == "TS"
+        assert isinstance(conditions.chip, TestStructureChip)
         assert conditions.chip.wafer.name == self.wafer_name
         assert conditions.ts_step == step
         assert conditions.ts_number == number

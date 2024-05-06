@@ -29,7 +29,7 @@ class Wafer(Base):
     type: Mapped[Optional[str]] = mapped_column(VARCHAR(length=10))
     
     def __repr__(self):
-        return "<Wafer(name='%s', id='%d')>" % (self.name, self.id)
+        return f"<Wafer(name='{self.name}, id='{self.id}')>"
 
 
 class WaferRepository(AbstractRepository[Wafer]):

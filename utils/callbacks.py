@@ -1,10 +1,7 @@
 import re
 from datetime import datetime
 from itertools import chain
-from typing import (
-    Sequence,
-    Union,
-)
+from typing import    Sequence
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -12,7 +9,7 @@ from sqlalchemy.orm import Session
 from orm import EqeSession
 
 
-def eqe_session_date(ctx, param, session_date: Union[datetime, None]):
+def eqe_session_date(ctx, param, session_date: datetime | None):
     if session_date is None:
         return None
     
@@ -31,7 +28,7 @@ def eqe_session_date(ctx, param, session_date: Union[datetime, None]):
     return eqe_session
 
 
-def flatten_options_type(values: Union[str, Sequence[str]]) -> set[str]:
+def flatten_options_type(values: str | Sequence[str]) -> set[str]:
     if isinstance(values, str):
         return set(re.split(r",\s?", values))
     else:
@@ -42,5 +39,5 @@ def flatten_options_type(values: Union[str, Sequence[str]]) -> set[str]:
         )
 
 
-def flatten_options(ctx, param, values: Union[str, Sequence[str]]) -> set[str]:
+def flatten_options(ctx, param, values: str | Sequence[str]) -> set[str]:
     return flatten_options_type(values)

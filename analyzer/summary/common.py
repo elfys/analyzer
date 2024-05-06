@@ -7,7 +7,6 @@ from typing import (
     Any,
     Collection,
     Iterable,
-    Union,
 )
 
 import click
@@ -83,7 +82,7 @@ def apply_conditional_formatting(
 def get_info(
     wafer: Wafer,
     chip_states: Iterable[ChipState],
-    measurements: Union[list[IvConditions], list[CVMeasurement]],
+    measurements: list[IvConditions] | list[CVMeasurement],
 ) -> pd.Series:
     format_date = strftime("%A, %d %b %Y", localtime())
     chip_states_str = "; ".join([state.name for state in chip_states])
@@ -138,7 +137,7 @@ def get_cv_plot_data(measurements: Collection[CVMeasurement]):
 
 
 def plot_data(
-    values: Collection[Union[IVMeasurement, CVMeasurement]],
+    values: Collection[IVMeasurement] | Collection[CVMeasurement],
     voltages: Collection[Decimal],
     quantile: tuple[float, float],
     thresholds: dict[Decimal, float],

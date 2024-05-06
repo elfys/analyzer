@@ -3,10 +3,7 @@ import re
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
-from typing import (
-    Generator,
-    Union,
-)
+from typing import Generator
 
 import click
 import numpy as np
@@ -96,7 +93,7 @@ def parse_ts(ctx: click.Context, file_paths: tuple[Path]):
     
     ctx.obj["logger"].info(f"{wafer.name} will be used for every parsed measurement")
     chip_name = ask_chip_name()
-    chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer, test_structure=True)
+    chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer, type="TS")
     
     for file_path in file_paths:
         with parsing_file(file_path, ctx):
@@ -114,6 +111,7 @@ def parse_ts(ctx: click.Context, file_paths: tuple[Path]):
 def parse_eqe(ctx: click.Context, file_paths: tuple[Path]):
     session: Session = ctx.obj["session"]
     instrument_map: dict[str, Instrument] = {i.name: i for i in session.query(Instrument).all()}
+    
     
     for file_path in file_paths:
         with parsing_file(file_path, ctx):
@@ -187,8 +185,9 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
 
 
 @from_context("logger", "logger")
-def guess_chip_and_wafer(filename: str, prefix: str, session: Session, logger) -> tuple[
-    Chip, Wafer]:
+def guess_chip_and_wafer(
+    filename: str, prefix: str, session: Session, logger
+) -> tuple[Chip, Wafer]:
     matcher = re.compile(rf"^{prefix}\s+(?P<wafer>[\w\d]+)\s+(?P<chip>[\w\d-]+)(\s.*)?\..*$", re.I)
     match = matcher.match(filename)
     
@@ -203,10 +202,14 @@ def guess_chip_and_wafer(filename: str, prefix: str, session: Session, logger) -
     
     wafer_name = ask_wafer_name(default=wafer_name)
     wafer = WaferRepository(session).get_or_create(name=wafer_name)
-    if not wafer.id:
+    
+    if not hasattr(wafer, 'id') or not wafer.id:
         confirm_wafer_creation(wafer)
     chip_name = ask_chip_name(default=chip_name)
-    chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer)
+    if wafer.name == "REF":
+        chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer, type="REF")
+    else:
+        chip = ChipRepository(session).get_or_create(name=chip_name, wafer=wafer)
     
     return chip, wafer
 
@@ -239,6 +242,7 @@ def confirm_wafer_creation(wafer, session: Session):
         default=True,
         abort=True,
     )
+    session.add(wafer)
     session.flush([wafer])  # force id generation
 
 
@@ -317,7 +321,7 @@ def parse_eqe_dat_file(file_path: Path) -> dict:
     return {"conditions": conditions, "data": data}
 
 
-def parse_epg_dat_file(file_path: Path, columns) -> dict[str, Union[datetime, list[pd.DataFrame]]]:
+def parse_epg_dat_file(file_path: Path, columns) -> dict[str, datetime | list[pd.DataFrame]]:
     content = file_path.read_text()
     
     date_matcher = re.compile(r"^Date:\s*(?P<date>[\d/]+)\s*$", re.M | re.I)

@@ -1,3 +1,5 @@
+# pyright: reportUndefinedVariable=false
+
 from datetime import datetime
 from typing import Optional
 
@@ -34,6 +36,6 @@ class Wafer(Base):
 
 class WaferRepository(AbstractRepository[Wafer]):
     model = Wafer
-
+    
     def get_last(self) -> Wafer:
         return self.session.query(self.model).order_by(self.model.record_created_at.desc()).first()

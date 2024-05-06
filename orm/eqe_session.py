@@ -1,3 +1,5 @@
+# pyright: reportUndefinedVariable=false
+
 import datetime
 
 from sqlalchemy import text

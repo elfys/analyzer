@@ -18,7 +18,10 @@ from orm import (
 )
 @click.pass_context
 def summary_group(ctx: click.Context):
-    active_command = summary_group.commands[ctx.invoked_subcommand]
+    active_command = summary_group.commands.get(ctx.invoked_subcommand)
+    if active_command is None:
+        return
+    
     obj = ctx.find_object(AnalyzerContext)
     try:
         wafer_option = next(

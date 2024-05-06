@@ -1,0 +1,25 @@
+{
+    "include": [
+        "**/*.py"
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.venv",
+        "**/.git",
+        "**/.mypy_cache",
+        "**/.pytest_cache",
+        "**/tests"
+    ],
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    "reportOptionalSubscript": false,
+    "reportOptionalMemberAccess": false,
+    "reportOptionalCall": false,
+    "reportOptionalOperands": false,
+    "pythonVersion": "3.12",
+    "venvPath": ".venv",
+    "typeCheckingMode": "basic",
+
+    "reportOptionalOperand": false
+}

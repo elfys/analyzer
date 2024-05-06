@@ -1,4 +1,3 @@
-import abc
 from typing import (
     Any,
     Optional,
@@ -6,30 +5,17 @@ from typing import (
 
 import click
 from click import Context
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import (
+    Session,
+)
 
-from orm import Base
-
-
-class EntityOptionChoice(metaclass=abc.ABCMeta):
-    id: int
-    name: str
-    
-    @classmethod
-    def __subclasshook__(cls, subclass):
-        return (
-            issubclass(subclass, Base)
-            and hasattr(subclass, "id")
-            and subclass.id.type.python_type == int
-            and hasattr(subclass, "name")
-            and subclass.name.type.python_type == str
-        )
+from utils.name_id_interface import NameIdInterface
 
 
 class EntityOption(click.Option):
-    def __init__(self, *args, entity_type: type[EntityOptionChoice], **kwargs: Any) -> None:
-        if not issubclass(entity_type, EntityOptionChoice):
-            raise RuntimeError("Given entity_type is not supported")
+    def __init__(self, *args, entity_type: type[NameIdInterface], **kwargs: Any) -> None:
+        if not isinstance(entity_type, NameIdInterface):
+            raise RuntimeError(f"Given entity_type {entity_type} is not supported")
         self.entity_type = entity_type
         super().__init__(*args, **kwargs)
     
@@ -53,5 +39,8 @@ class EntityOption(click.Option):
         descriptions = [f"{o.id} - {o.name};" for o in self.get_options(ctx)]
         if self.multiple:
             descriptions.insert(0, "ALL - Select all options;")
-        names, help_record = super().get_help_record(ctx)
+        record = super().get_help_record(ctx)
+        if record is None:
+            return None
+        names, help_record = record
         return names, help_record + "\n\n\b" + "\n".join([""] + descriptions)

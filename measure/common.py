@@ -1,6 +1,7 @@
 from typing import (
     Optional,
     Sequence,
+    cast,
 )
 
 import click
@@ -17,7 +18,7 @@ from .instrument import PyVisaInstrument
 
 @pass_measure_context
 def apply_configs(ctx: MeasureContext, commands: list[str]):
-    instrument: PyVisaInstrument = ctx.instruments["main"]
+    instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["main"])
     for command in commands:
         instrument.write(command)
 
@@ -34,10 +35,10 @@ def execute_command(instrument: PyVisaInstrument, command: str, command_type: st
     raise ValueError(f"Invalid command type {command_type}")
 
 
+@from_config("measure")
 @pass_measure_context
-@from_config("measure", "commands")
-def get_raw_measurements(ctx: MeasureContext, /, commands: list[dict]) -> dict[str, list]:
-    instrument: PyVisaInstrument = ctx.instruments["main"]
+def get_raw_measurements(ctx: MeasureContext, commands: list[dict]) -> dict[str, list]:
+    instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["main"])
     measurements: dict[str, list] = {}
     for command in commands:
         value = execute_command(instrument, command["command"], command["type"])

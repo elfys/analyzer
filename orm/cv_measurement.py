@@ -1,4 +1,6 @@
-from datetime import datetime
+# pyright: reportUndefinedVariable=false
+
+from datetime import datetime as datetime_type
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -37,7 +39,7 @@ class CVMeasurement(Base):
     chip_state: Mapped["ChipState"] = relationship()  # noqa: F821
     voltage_input: Mapped[Decimal] = mapped_column(DECIMAL(precision=10, scale=5))
     capacitance: Mapped[float]
-    datetime: Mapped[datetime] = mapped_column(DateTime(), server_default=func.current_timestamp())
+    datetime: Mapped[datetime_type] = mapped_column(DateTime(), server_default=func.current_timestamp())
     
     def __repr__(self):
         return "<CVMeasurement(id='%d', chip='%s', capacitance='%.3e')>" % (

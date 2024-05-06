@@ -1,4 +1,6 @@
-import datetime as datetime
+# pyright: reportUndefinedVariable=false
+
+from datetime import datetime as datetime_type
 
 from sqlalchemy import (
     DateTime,
@@ -46,7 +48,7 @@ class TsConditions(Base):
     structure_type: Mapped[str] = mapped_column(VARCHAR(length=10))
     ts_step: Mapped[int] = mapped_column(SmallInteger)
     ts_number: Mapped[int] = mapped_column(SmallInteger)
-    datetime: Mapped[datetime] = mapped_column(DateTime())
+    datetime: Mapped[datetime_type] = mapped_column(DateTime())
     
     def __repr__(self):
         return f"<TsConditions(id={self.id}, datetime={self.datetime}>"

@@ -6,6 +6,7 @@ import pandas as pd
 from click.exceptions import Exit
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from sqlalchemy import text
 from sqlalchemy.orm import (
     Query,
@@ -84,7 +85,7 @@ def summary_eqe(
     ctx.logger.info(f"Summary data is saved to {exel_file_name}")
 
 
-def get_eqe_plot_figure(sheets_data, no_ref=False) -> plt.Figure:
+def get_eqe_plot_figure(sheets_data, no_ref=False) -> Figure:
     plottable_sheets = [sheet for sheet in sheets_data if sheet.get("prop") is not None]
     fig, axes = plt.subplots(len(plottable_sheets), 1, figsize=(10, 15))
     

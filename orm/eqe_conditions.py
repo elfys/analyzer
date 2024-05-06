@@ -1,4 +1,6 @@
-from datetime import datetime
+# pyright: reportUndefinedVariable=false
+
+from datetime import datetime as datetime_type
 from typing import Optional
 
 from sqlalchemy import (
@@ -44,7 +46,7 @@ class EqeConditions(Base):
     measurements: Mapped[list["EqeMeasurement"]] = relationship(  # noqa: F821
         back_populates="conditions"
     )
-    datetime: Mapped[datetime] = mapped_column(DateTime(), server_default=func.current_timestamp())
+    datetime: Mapped[datetime_type] = mapped_column(DateTime(), server_default=func.current_timestamp())
     bias: Mapped[float]
     averaging: Mapped[int]
     dark_current: Mapped[float]

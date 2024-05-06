@@ -7,7 +7,7 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 
-from orm import Base
+from .base import Base
 
 
 class Misc(Base):

@@ -1,7 +1,7 @@
 import os
 import subprocess
 import time
-from typing import Optional
+from typing import Optional, cast
 
 import click
 import keyring
@@ -32,9 +32,9 @@ def set_db(
         ctx.logger.warning("%s\n\nSaving credentials is rejected.", e)
         return
     
-    password = password or db_url.password
-    username = username or db_url.username
-    host = host or db_url.host
+    password = cast(str, password or db_url.password)
+    username = cast(str, username or db_url.username)
+    host = cast(str, host or db_url.host)
     
     keyring.set_password("ELFYS_DB", "PASSWORD", password)
     keyring.set_password("ELFYS_DB", "USER", username)
@@ -62,7 +62,7 @@ def dump_db(ctx: click.Context, limit: Optional[int]):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    mysqldump.stdin.write(db_url.password + os.linesep)
+    mysqldump.stdin.write(cast(str, db_url.password) + os.linesep)
     mysqldump.stdin.flush()
     
     gzip = subprocess.Popen(

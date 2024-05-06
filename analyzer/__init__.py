@@ -48,16 +48,16 @@ LOGO = """
 @click.option("--db-url", help="Database URL.", default=os.environ.get('DB_URL', None))
 def analyzer(ctx: click.Context, log_level: str, db_url: str | URL | None):
     ctx_obj = ctx.ensure_object(AnalyzerContext)
-    if ctx_obj.logger is None:
+    if not ctx_obj.is_logger_set():
         ctx_obj.logger = logging.getLogger("analyzer")
         ctx_obj.logger.setLevel(log_level)
     
     debug = log_level == "DEBUG"
     
-    active_command = analyzer.commands[ctx.invoked_subcommand]
-    if active_command is not db_group and ctx_obj.session is None:
+    active_command = analyzer.commands.get(ctx.invoked_subcommand, None)
+    if active_command and active_command is not db_group and not ctx_obj.is_session_set():
         try:
-            if db_url is None and not os.environ.get("DEV", False):
+            if db_url is None:
                 db_url = get_db_url()
             engine = create_engine(db_url, echo="debug" if debug else False)
             ctx.call_on_close(lambda: engine.dispose(close=True))

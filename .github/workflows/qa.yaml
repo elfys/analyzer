@@ -43,6 +43,9 @@ jobs:
           pylint --rcfile=.pylintrc --ignore=tests analyzer measure
           pylint --rcfile=tests.pylintrc analyzer/tests measure/tests
 
+      - name: Static type checking
+        run: pyright
+
       - name: Run analyzer unit tests
         run: timeout 2m pytest ./analyzer || exit 1
 

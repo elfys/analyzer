@@ -5,6 +5,6 @@ from .eqe_defaults import *
 from .files import *
 from .functions import *
 from .get_db_url import get_db_url
-from .logger import logger
+from .logger import get_logger
 from .thresholds import *
 from .validators import *

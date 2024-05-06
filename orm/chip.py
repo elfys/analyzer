@@ -1,3 +1,5 @@
+# pyright: reportUndefinedVariable=false
+
 import re
 from typing import (
     ClassVar,
@@ -19,10 +21,7 @@ from sqlalchemy.orm import (
     validates,
 )
 
-from .abstract_repository import (
-    AbstractRepository,
-    Model,
-)
+from .abstract_repository import AbstractRepository
 from .base import Base
 
 
@@ -172,23 +171,23 @@ class EqeChip(SimpleChip):
 class ChipRepositoryMeta(type):
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        subclasses = ChipRepositoryMeta.get_all_subclasses(Chip)
+        subclasses = cls.get_all_subclasses(Chip)
         cls.chip_types = {
             subclass.__mapper_args__["polymorphic_identity"]: subclass
             for subclass in subclasses
             if "polymorphic_identity" in subclass.__mapper_args__}
     
-    def get_all_subclasses(cls: type[Chip]) -> list[type[Chip]]:
+    def get_all_subclasses(cls, target: type[Chip]) -> list[type[Chip]]:
         all_subclasses = []
         
-        for subclass in cls.__subclasses__():
+        for subclass in target.__subclasses__():
             all_subclasses.append(subclass)
-            all_subclasses.extend(ChipRepositoryMeta.get_all_subclasses(subclass))
+            all_subclasses.extend(cls.get_all_subclasses(subclass))
         
         return all_subclasses
 
 
-def is_simple_chip_type(cls: type(Chip)) -> TypeGuard[Type[SimpleChip]]:
+def is_simple_chip_type(cls: type[Chip]) -> TypeGuard[Type[SimpleChip]]:
     return issubclass(cls, SimpleChip)
 
 
@@ -223,7 +222,7 @@ class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
         return match.group(0)
     
     @classmethod
-    def create(cls, **kwargs) -> Model:
+    def create(cls, **kwargs) -> Chip:
         if (chip_type := kwargs.get('type')) is None:
             chip_type = ChipRepository.infer_chip_type(kwargs["name"])
             kwargs["type"] = chip_type

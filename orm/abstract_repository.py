@@ -1,23 +1,15 @@
-from typing import (
-    Generic,
-    Type,
-    TypeVar,
-)
-
-from orm import Base
-
-Model = TypeVar('Model', bound=Base)
+from .base import Base
 
 
-class AbstractRepository(Generic[Model]):
-    model: Type[Model]
+class AbstractRepository[Model: Base]:
+    model: type[Model]
     
     def __init__(self, session):
         self.session = session
     
     @classmethod
     def create(cls, **kwargs) -> Model:
-        instance = cls.model(**kwargs)
+        instance = cls.model(**kwargs)  # pyright: ignore[reportGeneralTypeIssues]
         return instance
     
     def get(self, **kwargs) -> Model:
@@ -33,8 +25,11 @@ class AbstractRepository(Generic[Model]):
         return existing
     
     def get_id(self, **kwargs):
+        if not hasattr(self.model, "id"):
+            raise AttributeError(f"Model {self.model.__name__} has no id attribute")
+        
         return (
-            self.session.query(self.model.id)
+            self.session.query(self.model.id)  # pyright: ignore[reportAttributeAccessIssue]
             .filter_by(**kwargs)
             .one()
         )[0]

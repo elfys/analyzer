@@ -1,14 +1,16 @@
-import logging
 import os
 
 import click
 import sentry_sdk
 import yaml
-from sqlalchemy import create_engine
+from sqlalchemy import (
+    URL,
+    create_engine,
+)
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from utils import get_db_url
+from utils import (get_db_url, get_logger)
 from .context import MeasureContext
 from .cv import cv
 from .instrument import InstrumentFactory
@@ -38,13 +40,13 @@ def measure_group(
     ctx: click.Context,
     config_path: str,
     log_level: str,
-    db_url: str | None,
+    db_url: str | URL | None,
     simulate: bool,
 ):
     ctx_obj = ctx.ensure_object(MeasureContext)
     
     if ctx_obj.logger is None:
-        ctx_obj.logger = logging.getLogger("measure")
+        ctx_obj.logger = get_logger("measure")
         ctx_obj.logger.setLevel(log_level)
     
     debug = log_level == "DEBUG"
@@ -70,8 +72,8 @@ def measure_group(
             sentry_sdk.capture_exception(e)
         ctx.exit(1)
     
-    instrument_factory = InstrumentFactory()
+    instrument_factory = InstrumentFactory(ctx_obj.logger, simulate)
     for key, instrument_config in ctx_obj.configs["instruments"].items():
-        instrument = instrument_factory(instrument_config, simulate)
+        instrument = instrument_factory(instrument_config)
         ctx.with_resource(instrument)
         ctx_obj.instruments[key] = instrument

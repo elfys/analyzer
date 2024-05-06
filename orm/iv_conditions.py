@@ -1,4 +1,6 @@
-from datetime import datetime
+# pyright: reportUndefinedVariable=false
+
+from datetime import datetime as datetime_type
 from typing import Optional
 
 from sqlalchemy import (
@@ -44,7 +46,7 @@ class IvConditions(Base):
     measurements: Mapped[list["IVMeasurement"]] = relationship(  # noqa: F821
         back_populates="conditions"
     )
-    datetime: Mapped[datetime] = mapped_column(
+    datetime: Mapped[datetime_type] = mapped_column(
         DATETIME,
         server_default=func.current_timestamp(),
         deferred_group="full",

@@ -3,7 +3,12 @@ import re
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
-from typing import Generator
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    TypedDict,
+)
 
 import click
 import numpy as np
@@ -42,6 +47,11 @@ from .context import (
     AnalyzerContext,
     pass_analyzer_context,
 )
+
+
+class EPGData(TypedDict):
+    timestamp: datetime
+    data: list[pd.DataFrame]
 
 
 @click.command(name="iv", help="Parse IV measurements")
@@ -265,7 +275,9 @@ def ask_session(ctx: AnalyzerContext, timestamp: datetime) -> EqeSession:
             f"Existing eqe session will be used: {repr(eqe_session)}"
         )
     else:
-        eqe_session = select_one(found_eqe_sessions, "Select eqe session", lambda s: (s.id, s.date))
+        eqe_session = select_one(found_eqe_sessions,
+                                 "Select eqe session",
+                                 lambda s: (s.id, str(s.date)))
     return eqe_session
 
 
@@ -284,7 +296,7 @@ def ask_chip_state(session: Session) -> ChipState:
 
 
 def parse_eqe_dat_file(file_path: Path) -> dict:
-    patterns = (
+    patterns: tuple[tuple[str, str, Callable[[str], Any]], ...] = (
         (
             "datetime",
             r"^(\d{2}/\d{2}/\d{4}\s\d{2}:\d{2})$",
@@ -304,7 +316,7 @@ def parse_eqe_dat_file(file_path: Path) -> dict:
             lambda m: datetime.strptime(m, "%d/%m/%Y %H.%M"),
         ),
     )
-    conditions = {"comment": ""}
+    conditions: dict[str, Any] = {"comment": ""}
     contents = file_path.read_text()
     for prop, pattern, factory in patterns:
         match = re.compile(pattern, re.MULTILINE).search(contents)
@@ -320,7 +332,7 @@ def parse_eqe_dat_file(file_path: Path) -> dict:
     return {"conditions": conditions, "data": data}
 
 
-def parse_epg_dat_file(file_path: Path, columns) -> dict[str, datetime | list[pd.DataFrame]]:
+def parse_epg_dat_file(file_path: Path, columns) -> EPGData:
     content = file_path.read_text()
     
     date_matcher = re.compile(r"^Date:\s*(?P<date>[\d/]+)\s*$", re.M | re.I)

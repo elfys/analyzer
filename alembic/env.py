@@ -76,7 +76,7 @@ def run_migrations_online() -> None:
             sys.exit(db_url_or_error_code)
         engine = create_engine(db_url_or_error_code)
     else:
-        engine_config = config.get_section(config.config_ini_section)
+        engine_config = config.get_section(config.config_ini_section, {})
         engine = engine_from_config(
             engine_config,
             prefix="sqlalchemy.",

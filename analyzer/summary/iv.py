@@ -6,11 +6,13 @@ from decimal import Decimal
 from typing import (
     Iterable,
     Sequence,
+    TypedDict,
 )
 
 import click
 import pandas as pd
 from openpyxl.styles import PatternFill
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import (
     Query,
     contains_eager,
@@ -42,6 +44,12 @@ from ..context import (
     AnalyzerContext,
     pass_analyzer_context,
 )
+
+
+class SheetsIVData(TypedDict):
+    anode: pd.DataFrame
+    cathode: pd.DataFrame
+    guard_ring: pd.DataFrame
 
 
 @click.command(name="iv", help="Make summary (png and xlsx) for IV measurements' data.")
@@ -83,10 +91,14 @@ def summary_iv(
     wafer_name: str,
     chip_states: Sequence[ChipState],
     quantile: tuple[float, float],
-    before: datetime | None,
-    after: datetime | None,
+    before: datetime | date | None,
+    after: datetime | date | None,
 ):
-    wafer = WaferRepository(ctx.session).get(name=wafer_name)
+    try:
+        wafer = WaferRepository(ctx.session).get(name=wafer_name)
+    except NoResultFound:
+        ctx.logger.warning(f"Wafer {wafer_name} not found.")
+        raise click.Abort()
     
     query: Query = (
         ctx.session.query(IvConditions)
@@ -127,22 +139,18 @@ def summary_iv(
         key=lambda c: abs(c.measurements[0].voltage_input - c.measurements[-1].voltage_input),
         reverse=True)
     # get all measurements, deduplicated by voltage and chip name
-    measurements = {
-        (m.voltage_input, c.chip.name): m for c in conditions for m in c.measurements
-    }.values()
+    measurements: list[IVMeasurement] = list(
+        {(m.voltage_input, c.chip.name): m for c in conditions for m in c.measurements
+         }.values())
     
     sheets_data = get_sheets_iv_data(measurements)
     
-    voltages = sheets_data["anode"].columns.intersection(
-        map(Decimal, ["-1", "0.01", "5", "6", "10", "20"])
-    )
+    voltages = list(sheets_data["anode"].columns.intersection(
+        [Decimal(v) for v in ("-1", "0.01", "5", "6", "10", "20")]
+    ))
     thresholds = get_thresholds(ctx.session, "IV")
     
-    chips_types = (
-        {chips_type}
-        if chips_type is not None
-        else {condition.chip.type for condition in conditions}
-    )
+    chips_types = {chips_type} if chips_type else {condition.chip.type for condition in conditions}
     
     title = f"{wafer_name} {','.join(chips_types)}"
     file_name = get_indexed_filename(f"Summary-IV-{title.replace(' ', '-')}", ("png", "xlsx"))
@@ -175,7 +183,7 @@ def summary_iv(
 
 
 def save_iv_summary_to_excel(
-    sheets_data,  # TODO: add type
+    sheets_data: SheetsIVData,
     info: pd.Series,
     file_name: str,
     voltages: Iterable[Decimal],
@@ -210,7 +218,7 @@ def save_iv_summary_to_excel(
 def get_sheets_iv_data(
     ctx: AnalyzerContext,
     measurements: Iterable[IVMeasurement],
-):  # TODO: annotate return type
+) -> SheetsIVData:
     anode_df = pd.DataFrame(dtype="float64")
     cathode_df = pd.DataFrame(dtype="float64")
     guard_ring_df = pd.DataFrame(dtype="float64")

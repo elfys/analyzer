@@ -91,8 +91,8 @@ class TestCompareWafers:
         result = runner.invoke(compare_wafers, ["--help"], obj=ctx_obj)
         assert result.exit_code == 0
     
-    def test_invoke_from_root_group(self, runner, session):
-        result = runner.invoke(analyzer, ["compare", "wafers", "-w", self.wafer_name])
+    def test_invoke_from_root_group(self, runner, ctx_obj):
+        result = runner.invoke(analyzer, ["compare", "wafers", "-w", self.wafer_name], obj=ctx_obj)
         assert result.exit_code == 0
     
     def test_exit_code(self, execution):

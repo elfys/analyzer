@@ -7,6 +7,10 @@ from typing import (
     Any,
     Collection,
     Iterable,
+    Mapping,
+    Sequence,
+    TypeGuard,
+    cast,
 )
 
 import click
@@ -16,7 +20,6 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
-from numpy import ndarray
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Fill
 from openpyxl.worksheet.worksheet import Worksheet
@@ -44,13 +47,13 @@ def get_slice_by_voltages(
     voltages: Iterable[Decimal]
 ) -> pd.DataFrame:
     columns = sorted(voltages)
-    slice_df = df[df.columns.intersection(columns)].copy()
+    slice_df = cast(pd.DataFrame, df[df.columns.intersection(columns)].copy())
     
-    empty_cols = slice_df.isna().all(axis=0)
+    empty_cols = cast(pd.Series, slice_df.isna().all(axis=0))
     if empty_cols.any():
         ctx.logger.warning(
             "The following voltages are not present in the data: %s.",
-            [float(col) for col, val in empty_cols.items() if val]
+            [float(cast(Decimal, col)) for col, val in empty_cols.items() if val]
         )
     slice_df.dropna(axis=1, how="all", inplace=True)
     return slice_df
@@ -58,8 +61,8 @@ def get_slice_by_voltages(
 
 def apply_conditional_formatting(
     sheet: Worksheet,
-    rules: dict[str, Fill],
-    thresholds: dict[str, dict[Decimal, float]],
+    rules: Mapping[str, Fill],
+    thresholds: Mapping[str, Mapping[Decimal, float]],
 ):
     chip_row_index = [(i + 1, cell.value) for i, cell in enumerate(sheet["A"]) if cell.value]
     
@@ -145,12 +148,20 @@ def get_cv_plot_data(measurements: Collection[CVMeasurement]):
     return data, xs, ys
 
 
+def is_iv_measurements(value: Sequence[Any]) -> TypeGuard[Sequence[IVMeasurement]]:
+    return isinstance(value[0], IVMeasurement)
+
+
+def is_cv_measurements(value: Sequence[Any]) -> TypeGuard[Sequence[CVMeasurement]]:
+    return isinstance(value[0], CVMeasurement)
+
+
 def plot_data(
-    values: Collection[IVMeasurement] | Collection[CVMeasurement],
-    voltages: Collection[Decimal],
+    values: Sequence[IVMeasurement] | Sequence[CVMeasurement],
+    voltages: Sequence[Decimal],
     quantile: tuple[float, float],
     thresholds: dict[Decimal, float],
-) -> (Figure, ndarray[Any, Axes]):
+) -> tuple[Figure, Sequence[Sequence[Axes]]]:
     # enable failure map mode if quantile is [0, 0] (red/green based on thresholds)
     failure_map = np.isclose(quantile, [0, 0], atol=1e-5).all()
     
@@ -175,9 +186,9 @@ def plot_data(
             target_values = [value for value in values if value.voltage_input == voltage]
             if len(target_values) == 0:
                 continue
-            if isinstance(target_values[0], IVMeasurement):
+            if is_iv_measurements(target_values):
                 data, xs, ys = get_iv_plot_data(target_values)
-            elif isinstance(target_values[0], CVMeasurement):
+            elif is_cv_measurements(target_values):
                 data, xs, ys = get_cv_plot_data(target_values)
             else:
                 raise RuntimeError("Unknown object type was provided")

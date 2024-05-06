@@ -21,12 +21,16 @@ DEFAULT_CONFIGS = {
 
 
 class PyVisaInstrument:
-    def __init__(self, resource_id, name, config, rm):
+    def __init__(
+        self, resource_id: str, name: str, config: dict, rm: pyvisa.ResourceManager,
+        logger: logging.Logger
+    ):
         self.resource_id = resource_id
         self.name = name
         self.config = config
         self.rm = rm
         self.resource = None
+        self.logger = logger
     
     def __enter__(self):
         try:
@@ -36,18 +40,14 @@ class PyVisaInstrument:
                 self.resource.close()
             except Exception:
                 pass
-            logger = logging.getLogger("measure")
-            logger.error(f"PYVISA error: {e}")
+            self.logger.error(f"PYVISA error: {e}")
         
-        if 'SMU 2636' in self.name:
-            self.check_errors(self.resource)
+        self.check_errors()
         
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if 'SMU 2636' in self.name:
-            self.check_errors(self.resource)
-        # TODO: check errors for other instruments
+        self.check_errors()
         self.resource.close()
     
     def __repr__(self):
@@ -59,11 +59,14 @@ class PyVisaInstrument:
     def __getattr__(self, name):
         return getattr(self.resource, name)
     
-    def check_errors(self, instrument: MessageBasedResource):
-        logger = logging.getLogger("measure")
-        while int(float(instrument.query("print(errorqueue.count)"))) > 0:
-            error = instrument.query("print(errorqueue.next())")
-            logger.warning(f"Instrument error: {error}")
+    def check_errors(self):
+        if 'SMU 2636' in self.name and isinstance(self.resource, MessageBasedResource):
+            logger = logging.getLogger("measure")
+            while int(float(self.resource.query("print(errorqueue.count)"))) > 0:
+                error = self.resource.query("print(errorqueue.next())")
+                logger.warning(f"Instrument error: {error}")
+        
+        # TODO: check errors for other instruments
 
 
 class TemperatureInstrument:
@@ -77,7 +80,7 @@ class TemperatureInstrument:
             return self
         errmsg = YRefParam()
         if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
-            raise RuntimeError("RegisterHub (temperature sensor) error: " + errmsg.value)
+            raise RuntimeError(f"RegisterHub (temperature sensor) error: {errmsg.value}")
         
         # TODO: does it work with simple 'temperature' instead of sensor_id?
         sensor: YTemperature = YTemperature.FindTemperature(self.sensor_id)
@@ -99,25 +102,32 @@ type InstrumentsTypes = PyVisaInstrument | TemperatureInstrument
 
 
 class InstrumentFactory:
-    def __call__(self, config, simulate=False) -> InstrumentsTypes:
+    def __init__(self, logger: logging.Logger, simulate=False):
+        self.logger = logger
+        self.simulate = simulate
+        if simulate:
+            self.rm = pyvisa.ResourceManager("measure/tests/simulation.yaml@sim")
+        else:
+            self.rm = pyvisa.ResourceManager()
+    
+    def __call__(self, config) -> InstrumentsTypes:
         kind = config["kind"]
         name = config["name"]
         kwargs = {**DEFAULT_CONFIGS.get(name, {}), **config.get("kwargs", {})}
         resource_id = config["resource"]
         
         if kind == "pyvisa":
-            if simulate:
-                rm = pyvisa.ResourceManager("measure/tests/simulation.yaml@sim")
+            if self.simulate:
                 return PyVisaInstrument(
                     "GPIB0::9::INSTR",
                     f"{name} simulation",
                     {'read_termination': '\n', 'write_termination': '\n'},
-                    rm,
+                    self.rm,
+                    self.logger,
                 )
             else:
-                rm = pyvisa.ResourceManager()
-                return PyVisaInstrument(resource_id, name, kwargs, rm)
+                return PyVisaInstrument(resource_id, name, kwargs, self.rm, self.logger)
         elif kind == "temperature":
-            return TemperatureInstrument(resource_id, simulate)
+            return TemperatureInstrument(resource_id, self.simulate)
         else:
             raise ValueError(f"Unknown instrument kind: {kind}")

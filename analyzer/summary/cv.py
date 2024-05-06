@@ -4,31 +4,20 @@ from datetime import (
 )
 from decimal import Decimal
 from typing import (
-    Any,
     Iterable,
+    TypedDict,
 )
 
 import click
 import pandas as pd
 from openpyxl.styles import PatternFill
 from pandas import DataFrame
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import (
     Query,
     joinedload,
 )
 
-from ..context import (
-    AnalyzerContext,
-    pass_analyzer_context,
-)
-from .common import (
-    apply_conditional_formatting,
-    date_formats,
-    date_formats_help,
-    get_info,
-    get_slice_by_voltages,
-    plot_data,
-)
 from orm import (
     CVMeasurement,
     Chip,
@@ -40,6 +29,24 @@ from utils import (
     get_indexed_filename,
     get_thresholds,
 )
+from .common import (
+    apply_conditional_formatting,
+    date_formats,
+    date_formats_help,
+    get_info,
+    get_slice_by_voltages,
+    plot_data,
+)
+from ..context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
+
+
+class SheetsCVData(TypedDict):
+    capacitance: DataFrame
+    chip_names: list[str]
+    voltages: list[Decimal]
 
 
 @click.command(name="cv", help="Make summary (png and xlsx) for CV measurements' data.")
@@ -81,10 +88,15 @@ def summary_cv(
     wafer_name: str,
     chip_states: list[ChipState],
     quantile: tuple[float, float],
-    before: datetime | None,
-    after: datetime | None,
+    before: datetime | date | None,
+    after: datetime | date | None,
 ):
-    wafer = WaferRepository(ctx.session).get(name=wafer_name)
+    try:
+        wafer = WaferRepository(ctx.session).get(name=wafer_name)
+    except NoResultFound:
+        ctx.logger.warning(f"Wafer {wafer_name} not found.")
+        raise click.Abort()
+
     query: Query = (
         ctx.session.query(CVMeasurement)
         .filter(CVMeasurement.chip.has(Chip.wafer.__eq__(wafer)))
@@ -147,13 +159,8 @@ def summary_cv(
     ctx.logger.info(f"Summary data is saved to {exel_file_name}")
 
 
-# class SheetsCVData(TypedDict): # TODO: finish this
-#     capacitance: DataFrame
-#     chip_names: List[str]
-#     voltages: List[Decimal]
-
 def save_cv_summary_to_excel(
-    sheets_data: dict,
+    sheets_data: SheetsCVData,
     info: pd.Series,
     file_name: str,
     voltages: Iterable[Decimal],
@@ -179,10 +186,10 @@ def save_cv_summary_to_excel(
 
 def get_sheets_cv_data(
     measurements: list[CVMeasurement],
-) -> dict[str, pd.DataFrame | Any]:
+) -> SheetsCVData:
     chip_names: list[str] = sorted({measurement.chip.name for measurement in measurements})
     voltages: list[Decimal] = sorted({measurement.voltage_input for measurement in measurements})
-    capacitance_df: DataFrame = pd.DataFrame(dtype="float64", index=chip_names, columns=voltages)
+    capacitance_df = pd.DataFrame(index=pd.Index(chip_names), columns=pd.Index(voltages))
     with click.progressbar(measurements, label="Processing measurements...") as progress:
         for measurement in progress:
             measurement: CVMeasurement

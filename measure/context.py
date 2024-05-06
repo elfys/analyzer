@@ -5,6 +5,7 @@ from typing import (
     Concatenate,
     ParamSpec,
     TypeVar,
+    cast,
 )
 
 import click
@@ -33,7 +34,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def from_config[T](path: str, arg_name: str):
+def from_config[T](path: str):
     def get() -> T:
         ctx = click.get_current_context().find_object(MeasureContext)
         obj = ctx.configs
@@ -41,16 +42,13 @@ def from_config[T](path: str, arg_name: str):
             if key not in obj:
                 raise KeyError(f"Key '{key}' not found in config object.")
             obj = obj[key]
-        return obj
+        
+        return cast(T, obj)
     
     def decorator(func: Callable[Concatenate[T, P], R]) -> Callable[P, R]:
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs):
-            if arg_name in kwargs:
-                return func(*args, **kwargs)
-            
-            kwargs[arg_name] = get()
-            return func(*args, **kwargs)
+            return func(get(), *args, **kwargs)
         
         return wrapper
     

@@ -49,4 +49,7 @@ def log_handler(test_logger):
 
 @pytest.fixture
 def ctx_obj(session, log_handler, test_logger):
-    return AnalyzerContext(session=session, logger=test_logger)
+    ctx = AnalyzerContext()
+    ctx.session = session
+    ctx.logger = test_logger
+    yield ctx

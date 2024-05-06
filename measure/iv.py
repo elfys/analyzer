@@ -1,4 +1,5 @@
 from time import sleep
+from typing import cast
 
 import click
 import numpy as np
@@ -33,6 +34,7 @@ from .instrument import (
 
 
 @click.command(name="iv", help="Measure IV data of the current chip.")
+@from_config("instruments.main.name")
 @pass_measure_context
 @click.option("-n",
               "--chip-name",
@@ -56,14 +58,13 @@ from .instrument import (
     is_flag=True,
     help="Automatic measurement mode. Invalid measurements will be skipped.",
 )
-@from_config("instruments.main.name", "instrument_name")
 def measure_iv_command(
     ctx: MeasureContext,
+    instrument_name: str,
     chip_names: tuple[str, ...],
     wafer_name: str,
     chip_state: ChipState,
     automatic: bool,
-    instrument_name: str,
 ):
     instrument_id = InstrumentRepository(ctx.session).get_id(name=instrument_name)
     if (matrix_config := ctx.configs.get("matrix")) is not None:
@@ -99,7 +100,7 @@ def measure_matrix(
     setup_config,
     conditions_kwargs,
 ):
-    scanner: PyVisaInstrument = ctx.instruments["scanner"]
+    scanner = cast(PyVisaInstrument, ctx.instruments["scanner"])
     scanner.write("RX")  # open all channels
     chips = sorted(matrix.chips, key=lambda c: c.name)
     for i, chip in enumerate(chips, start=1):
@@ -119,18 +120,17 @@ def measure_matrix(
         ctx.session.commit()  # commit after each chip
 
 
+@from_config("chips")
 @pass_measure_context
-@from_config("chips", "chip_configs")
 def measure_setup(
     ctx: MeasureContext,
+    chip_configs,
     automatic: bool,
     chips,
     setup_config,
     conditions_kwargs,
-    /,
-    chip_configs,
 ):
-    thermometer: TemperatureInstrument = ctx.instruments["temperature"]
+    thermometer = cast(TemperatureInstrument, ctx.instruments["temperature"])
     temperature = thermometer.get_temperature()
     validate_temperature(temperature, automatic)
     
@@ -150,13 +150,12 @@ def measure_setup(
         ctx.session.add(iv_conditions)
 
 
-@from_config("instruments.main", "instrument_config")
+@from_config("instruments.main")
 def create_measurements(
+    instrument_config: dict,
     raw_measurements: dict[str, list[float]],
     temperature: float,
     chip_config: dict,
-    /,
-    instrument_config: dict,
 ) -> list[IVMeasurement]:
     kwarg_keys = list(chip_config.keys())
     raw_numbers = zip(*[raw_measurements[chip_config[key]] for key in kwarg_keys], strict=True)

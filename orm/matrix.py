@@ -1,3 +1,5 @@
+# pyright: reportUndefinedVariable=false
+
 from sqlalchemy import (
     Column,
     Integer,

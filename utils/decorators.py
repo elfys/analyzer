@@ -1,10 +1,14 @@
 from functools import wraps
+from typing import (
+    Callable,
+    cast,
+)
 
 import click
 
 
-def remember_choice(message: str):
-    def decorate(fn: callable):
+def remember_choice[F: Callable](message: str):
+    def decorate(fn: F) -> F:
         @wraps(fn)
         def wrapper(*args, **kwargs):
             try:
@@ -19,6 +23,6 @@ def remember_choice(message: str):
                 fn.__previous_choice = choice if apply_to_all else None
             return choice
         
-        return wrapper
+        return cast(F, wrapper)
     
     return decorate

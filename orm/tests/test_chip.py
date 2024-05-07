@@ -4,7 +4,10 @@ import pytest
 
 from orm import chip as chip_module
 from orm.chip import (
+    AChip,  # noqa;
     ChipRepository,
+    DChip,  # noqa
+    FChip,  # noqa
     SimpleChip,
 )
 
@@ -12,6 +15,69 @@ ALL_CHIP_TYPES = [
     "A", "B", "C", "D", "E", "F", "G", "I", "IH", "IM", "J", "JH", "JM", "L", "LH", "LM", "REF",
     "TS", "U", "UH", "V", "VH", "X", "XH", "Y", "YH"
 ]
+
+
+class TestSimpleChip:
+    def test_get_area_with_known_chip_size(self):
+        assert AChip.get_area() == pytest.approx(2.8561)  # Assuming the chip size is (1.69, 1.69)
+    
+    def test_get_area_with_unknown_chip_size(self):
+        with pytest.raises(AttributeError, match="Chip size for DChip is unknown"):
+            DChip.get_area()
+    
+    def test_get_perimeter_with_known_chip_size(self):
+        assert FChip.get_perimeter() == pytest.approx(7.62)  # Assuming the chip size is (2.56, 1.25)
+    
+    def test_get_perimeter_with_unknown_chip_size(self):
+        with pytest.raises(AttributeError, match="Chip size for DChip is unknown"):
+            DChip.get_perimeter()
+        
+        assert FChip.get_chip_size() == pytest.approx((2.56, 1.25))
+    
+    def test_get_chip_size_with_unknown_chip_size(self):
+        SimpleChip.chip_size = None
+        with pytest.raises(AttributeError):
+            SimpleChip.get_chip_size()
+    
+    def test_x_coordinate_with_valid_chip_name(self):
+        chip = AChip(name="A1234")
+        assert chip.x_coordinate == 12
+    
+    def test_x_coordinate_with_invalid_chip_name(self):
+        chip = AChip(name="A12")
+        with pytest.raises(ValueError):
+            chip.x_coordinate
+    
+    def test_y_coordinate_with_valid_chip_name(self):
+        chip = AChip(name="A1234")
+        assert chip.y_coordinate == 34
+    
+    def test_y_coordinate_with_invalid_chip_name(self):
+        chip = AChip(name="A12")
+        with pytest.raises(ValueError):
+            assert chip.y_coordinate == 0
+    
+    def test_chip_repository_get_area_with_known_chip_type(self):
+        # Assuming the chip size for type "A" is (1.69, 1.69)
+        assert ChipRepository.get_area("A") == pytest.approx(2.8561)
+    
+    def test_chip_repository_get_area_with_unknown_chip_type(self):
+        with pytest.raises(ValueError, match="Unknown chip type Z"):
+            ChipRepository.get_area("Z")
+    
+    def test_chip_repository_get_perimeter_with_known_chip_type(self):
+        assert ChipRepository.get_perimeter("A") == 6.76  # Assuming the chip size for type "A" is (1.69, 1.69)
+    
+    def test_chip_repository_get_perimeter_with_unknown_chip_type(self):
+        with pytest.raises(ValueError):
+            ChipRepository.get_perimeter("Z")
+    
+    def test_chip_repository_infer_chip_type_with_known_chip_name(self):
+        assert ChipRepository.infer_chip_type("A1234") == "A"
+    
+    def test_chip_repository_infer_chip_type_with_unknown_chip_name(self):
+        with pytest.raises(ValueError):
+            ChipRepository.infer_chip_type("Z1234")  # Assuming there is no chip type "Z"
 
 
 class TestChipRepository:
@@ -83,7 +149,10 @@ class TestChipRepository:
         assert len(ab_chips) == 2
     
     def test_get_or_create_chips_for_wafer_returns_correct_chip_type(self, ab_chips):
-        from orm.chip import AChip, BChip  # noqa
+        from orm.chip import (
+            AChip,
+            BChip,  # noqa
+        )
         assert isinstance(ab_chips[0], AChip)
         assert isinstance(ab_chips[1], BChip)
     
@@ -108,4 +177,3 @@ class TestChipRepository:
         chips = repo.get_or_create_chips_for_wafer(['A1234', 'B1234'], 'wafer')
         assert len(chips) == 2
         assert all(isinstance(chip, SimpleChip) for chip in chips)
-    

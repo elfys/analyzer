@@ -69,7 +69,7 @@ def compare_wafers(
 ):
     wafer_names = set(map(lambda x: x.upper(), wafer_names))
     wafers = ctx.session.execute(select(Wafer).filter(Wafer.name.in_(wafer_names))).scalars().all()
-    
+
     not_found_wafers = wafer_names - set(wafer.name for wafer in wafers)
     if not_found_wafers:
         ctx.logger.warning(f"Wafers not found: {', '.join(not_found_wafers)}")
@@ -243,12 +243,17 @@ def get_leakage_frame(values_frame) -> pd.DataFrame:
     return leakage_frame
 
 
-def add_perimeter_area_level(index: pd.MultiIndex) -> pd.MultiIndex:
+@pass_analyzer_context
+def add_perimeter_area_level(ctx: AnalyzerContext, index: pd.MultiIndex) -> pd.MultiIndex:
     idx_tuples = []
     for col in index.values:
         voltage, chip_type = col
-        perimeter = ChipRepository.get_perimeter(chip_type)
-        area = ChipRepository.get_area(chip_type)
+        try:
+            perimeter = ChipRepository.get_perimeter(chip_type)
+            area = ChipRepository.get_area(chip_type)
+        except AttributeError:
+            ctx.logger.warning(f"Chip {chip_type} has no perimeter or area")
+            continue
         perimeter_area = perimeter / area
         idx_tuples.append((voltage, chip_type, Decimal(perimeter_area).quantize(Decimal("0.001"))))
     return pd.MultiIndex.from_tuples(idx_tuples, names=[*index.names, "Perimeter / area"])

@@ -132,17 +132,7 @@ def summary_iv(
         ctx.logger.warning("No measurements found.")
         return
     
-    # sort conditions by amplitude of voltage, smaller go last
-    # thus more precise measurements from -0.01 to 0.01 will overwrite less precise from -1 to 20
-    conditions: list[IvConditions] = sorted(
-        conditions,
-        key=lambda c: abs(c.measurements[0].voltage_input - c.measurements[-1].voltage_input),
-        reverse=True)
-    # get all measurements, deduplicated by voltage and chip name
-    measurements: list[IVMeasurement] = list(
-        {(m.voltage_input, c.chip.name): m for c in conditions for m in c.measurements
-         }.values())
-    
+    measurements = get_iv_measurements(conditions)
     sheets_data = get_sheets_iv_data(measurements)
     
     voltages = list(sheets_data["anode"].columns.intersection(
@@ -180,6 +170,25 @@ def summary_iv(
     save_iv_summary_to_excel(sheets_data, info, exel_file_name, voltages, thresholds)
     
     ctx.logger.info(f"Summary data is saved to {exel_file_name}")
+
+
+def get_iv_measurements(conditions: list[IvConditions]) -> list[IVMeasurement]:
+    # sort conditions by amplitude of voltage, smaller go last
+    # thus more precise measurements with voltage input from -0.01 to 0.01 will overwrite less
+    # precise from -1 to 20
+    
+    def get_voltage_amplitude(condition: IvConditions):
+        voltages = [m.voltage_input for m in condition.measurements]
+        return max(voltages) - min(voltages)
+    
+    non_empty_conditions = [c for c in conditions if c.measurements]
+    sorted_conditions = sorted(non_empty_conditions, key=get_voltage_amplitude, reverse=True)
+    
+    # get all measurements, deduplicated by voltage and chip name
+    measurements = (
+        (m.voltage_input, c.chip_id, m) for c in sorted_conditions for m in c.measurements)
+    measurements_dict = {(v, c): m for v, c, m in measurements}
+    return list(measurements_dict.values())
 
 
 def save_iv_summary_to_excel(

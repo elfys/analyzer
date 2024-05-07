@@ -82,8 +82,8 @@ class SimpleChip(Chip):  # all chips with size, have IV and CV measurements
     chip_sizes = {
         "A": (1.69, 1.69),
         "B": (1.69, 1.69),
-        "C": ...,
-        "D": ...,
+        "C": None,
+        "D": None,
         "E": (1.806, 1.806),
         "F": (2.56, 1.25),
         "G": (1.4, 3.25),
@@ -119,11 +119,19 @@ class SimpleChip(Chip):  # all chips with size, have IV and CV measurements
     
     @classmethod
     def get_area(cls) -> float:
-        return cls.chip_size[0] * cls.chip_size[1]
+        chip_size = cls.get_chip_size()
+        return chip_size[0] * chip_size[1]
     
     @classmethod
     def get_perimeter(cls) -> float:
-        return (cls.chip_size[0] + cls.chip_size[1]) * 2
+        chip_size = cls.get_chip_size()
+        return (chip_size[0] + chip_size[1]) * 2
+    
+    @classmethod
+    def get_chip_size(cls) -> tuple[float, float]:
+        if cls.chip_size is None:
+            raise AttributeError(f"Chip size for {cls.__name__} is unknown")
+        return cls.chip_size
 
 
 class TestStructureChip(Chip):
@@ -155,16 +163,16 @@ class EqeChip(SimpleChip):
     chip_sizes = {
         "U": (5, 5),
         "UH": (5, 5),
-        "I": ...,
-        "IH": ...,
-        "IM": ...,
-        "J": ...,
-        "JH": ...,
-        "JM": ...,
-        "L": ...,
-        "LH": ...,
-        "LM": ...,
-        "REF": ...,
+        "I": None,
+        "IH": None,
+        "IM": None,
+        "J": None,
+        "JH": None,
+        "JM": None,
+        "L": None,
+        "LH": None,
+        "LM": None,
+        "REF": None,
     }
 
 
@@ -196,8 +204,14 @@ class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
     chip_types: dict[str, type[Chip]]
     
     @classmethod
+    def get_chip_class(cls, chip_type: str) -> type[Chip]:
+        if chip_type not in cls.chip_types:
+            raise ValueError(f"Unknown chip type {chip_type}")
+        return cls.chip_types[chip_type]
+    
+    @classmethod
     def get_area(cls, chip_type: str) -> float:
-        chip_cls = ChipRepository.chip_types[chip_type]
+        chip_cls = cls.get_chip_class(chip_type)
         if not is_simple_chip_type(chip_cls):
             raise AttributeError(f"Chip class {chip_cls.__name__} has no get_area method")
         else:
@@ -205,7 +219,7 @@ class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
     
     @classmethod
     def get_perimeter(cls, chip_type: str) -> float:
-        chip_cls = ChipRepository.chip_types[chip_type]
+        chip_cls = cls.get_chip_class(chip_type)
         if not is_simple_chip_type(chip_cls):
             raise AttributeError(f"Chip class {chip_cls.__name__} has no get_perimeter method")
         else:
@@ -224,12 +238,12 @@ class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
     @classmethod
     def create(cls, **kwargs) -> Chip:
         if (chip_type := kwargs.get('type')) is None:
-            chip_type = ChipRepository.infer_chip_type(kwargs["name"])
+            chip_type = cls.infer_chip_type(kwargs["name"])
             kwargs["type"] = chip_type
         else:
             if chip_type not in cls.chip_types:
                 raise ValueError(f"Unknown chip type {chip_type}")
-        model = cls.chip_types[chip_type]
+        model = cls.get_chip_class(chip_type)
         try:
             chip = model(**kwargs)
         except TypeError:

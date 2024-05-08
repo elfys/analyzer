@@ -94,8 +94,8 @@ class TestValidateMeasurements:
         return request.getfixturevalue(request.param)
     
     @pytest.mark.parametrize("measurements, automatic", itertools.product(
-        ['valid_measurements', 'too_high_measurements', 'too_low_measurements'], [True, False]),
-                             indirect=['measurements'])
+        ['valid_measurements', 'too_high_measurements', 'too_low_measurements'], [True, False]
+    ), indirect=['measurements'])
     def test_validate_measurements_with_no_validation_config(
         self, ctx_obj,
         measurements,

@@ -36,9 +36,9 @@ measure:
     name: guard_current
 
 chips:
-  - voltage_input: voltage_input
-    anode_current: anode_current
-    guard_current: guard_current
+  - voltage_input:
+    anode_current:
+    guard_current:
 
 
 setups:

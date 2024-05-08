@@ -19,6 +19,7 @@ from utils import (
 from .common import (
     apply_configs,
     get_raw_measurements,
+    preprocess_measurements,
     validate_chip_names,
     validate_measurements,
 )
@@ -71,8 +72,10 @@ def measure_iv_command(
         matrix = MatrixRepository(ctx.session).get_or_create_from_configs(
             matrix_name=chip_names[0], wafer_name=wafer_name, matrix_config=matrix_config
         )
+        ctx.session.add(matrix)
     else:
         chips = ChipRepository(ctx.session).get_or_create_chips_for_wafer(chip_names, wafer_name)
+        ctx.session.add_all(chips)
     ctx.session.commit()
     
     for setup_config in ctx.configs["setups"]:
@@ -135,17 +138,18 @@ def measure_setup(
     validate_temperature(temperature, automatic)
     
     ctx.logger.info(f"Measuring {', '.join([c.name for c in chips])}")
-    if setup_config["program"].get("minimum", False):
-        raw_measurements = get_minimal_measurements()
+    if (minimization_config:= setup_config["program"].get("minimum")) is not None:
+        raw_measurements = get_minimal_measurements(minimization_config)
     else:
         raw_measurements = get_raw_measurements()
-    validate_measurements(raw_measurements, setup_config, automatic)
     
     iv_cond_repo = IvConditionsRepository(ctx.session)
     for chip, chip_config in zip(chips, chip_configs, strict=True):
+        measurements_dict = preprocess_measurements(raw_measurements, chip_config)
+        validate_measurements(measurements_dict, setup_config, automatic)
         iv_conditions = iv_cond_repo.create(
             chip=chip, temperature=temperature, **conditions_kwargs,
-            measurements=create_measurements(raw_measurements, temperature, chip_config),
+            measurements=create_measurements(measurements_dict, temperature),
         )
         ctx.session.add(iv_conditions)
 
@@ -153,46 +157,38 @@ def measure_setup(
 @from_config("instruments.main")
 def create_measurements(
     instrument_config: dict,
-    raw_measurements: dict[str, list[float]],
+    measurements_dict: dict[str, list[float]],
     temperature: float,
-    chip_config: dict,
 ) -> list[IVMeasurement]:
-    kwarg_keys = list(chip_config.keys())
-    raw_numbers = zip(*[raw_measurements[chip_config[key]] for key in kwarg_keys], strict=True)
     measurements = []
     
-    for data in raw_numbers:
-        measurement_kwargs = dict(zip(kwarg_keys, data))
+    for values in zip(*measurements_dict.values(), strict=True):
+        data = dict(zip(measurements_dict.keys(), values, strict=True))
         
-        if "anode_current" in measurement_kwargs:
-            anode_current = measurement_kwargs["anode_current"]
-            anode_current_corrected = compute_corrected_current(temperature, anode_current)
-            measurement_kwargs["anode_current_corrected"] = anode_current_corrected
+        if (anode_current := data.get("anode_current")) is not None:
+            data["anode_current_corrected"] = compute_corrected_current(temperature, anode_current)
         
         if instrument_config.get("invert_voltage", False):
-            measurement_kwargs["voltage_input"] *= -1
+            data["voltage_input"] *= -1
         
-        measurements.append(IVMeasurement(**measurement_kwargs))
+        measurements.append(IVMeasurement(**data))
     return measurements
 
 
-def get_minimal_measurements():
+def get_minimal_measurements(config):
+    x, y, timeout = config["x"], config["y"], config["timeout"]
     prev_measurements = {}
     while True:
         raw_measurements = get_raw_measurements()
-        xdata = raw_measurements["voltage_input"]
-        if "anode_current" in raw_measurements:
-            ydata = raw_measurements["anode_current"]
-        elif "cathode_current" in raw_measurements:
-            ydata = raw_measurements["cathode_current"]
-        else:
-            raise ValueError("No current measurement found")
+        xdata = raw_measurements[x]
+        ydata = raw_measurements[y]
+        
         slope, offset = np.polyfit(xdata, ydata, 1)
         if prev_measurements and abs(offset) >= prev_measurements["offset"]:
             prev_measurements.pop("offset")
             return prev_measurements
         prev_measurements = dict(offset=abs(offset), **raw_measurements)
-        sleep(0.5)
+        sleep(timeout)
 
 
 def compute_corrected_current(temp: float, current: float):

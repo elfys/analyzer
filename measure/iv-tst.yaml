@@ -29,8 +29,8 @@ measure:
     name: voltage_input
 
 chips:
-  - voltage_input: voltage_input
-    anode_current: anode_current
+  - voltage_input:
+    anode_current:
 
 
 setups:

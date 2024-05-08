@@ -32,7 +32,7 @@ def execute_command(instrument: PyVisaInstrument, command: str, command_type: st
         return list(instrument.query_ascii_values(command))
     if command_type == "query_csv_values":
         return [float(value) for value in instrument.query(command).split(",")]
-    raise ValueError(f"Invalid command type {command_type}")
+    raise click.BadParameter(f"Invalid command type \"{command_type}\".")
 
 
 @from_config("measure")
@@ -77,18 +77,23 @@ def do_validation(measurements: dict[str, list], rules: dict) -> Optional[str]:
     for value_name, config in rules.items():
         for validator_name, rules in config.items():
             path = parse(value_name)
-            for ctx in path.find(measurements):
-                value = ctx.value
-                if rules.get("abs"):
-                    value = abs(value)
-                if validator_name == "min":
-                    if value < rules["value"]:
-                        return rules["message"]
-                elif validator_name == "max":
-                    if value > rules["value"]:
-                        return rules["message"]
-                else:
-                    raise ValueError(f"Unknown validator {validator_name}")
+            values = path.find(measurements)
+            if not values:
+                raise click.BadParameter(
+                    f"Value \"{value_name}\" not found in measurements, but it is required for validation.")
+            elif len(values) > 1:
+                raise click.BadParameter(f"Value \"{value_name}\" is ambiguous in measurements.")
+            value = values[0].value
+            if rules.get("abs"):
+                value = abs(value)
+            if validator_name == "min":
+                if value < rules["value"]:
+                    return rules["message"]
+            elif validator_name == "max":
+                if value > rules["value"]:
+                    return rules["message"]
+            else:
+                raise click.BadParameter(f"Unknown validator format in \"{validator_name}\"")
     return None
 
 
@@ -102,9 +107,30 @@ def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: 
             raise click.BadParameter("Matrix measurement requires exactly one chip name")
     else:
         if len(set(chip_names)) != len(chip_names):
-            raise ValueError(base_error_msg % "Chip names must be unique.")
+            raise click.BadParameter(base_error_msg % "Chip names must be unique.")
         expected_chips_number = len(configs["chips"])
         if len(chip_names) != expected_chips_number:
-            raise ValueError(base_error_msg % f"{expected_chips_number} chip names expected, based on provided config file.")
+            raise click.BadParameter(base_error_msg % f"{expected_chips_number} chip names expected, based on provided config file.")
     
     return tuple(chip_names)
+
+
+def preprocess_measurements(
+    raw_measurements: dict[str, list], chip_config: dict
+) -> dict[str, list]:
+    measurements_dict = {}
+    
+    for prop_name, prop_config in chip_config.items():
+        if not prop_config:
+            measurements_dict[prop_name] = raw_measurements[prop_name]
+        elif isinstance(prop_config, str):
+            measurements_dict[prop_name] = raw_measurements[prop_config]
+        elif isinstance(prop_config, dict):
+            try:
+                p, s = prop_config["prop"], slice(*prop_config["slice"])
+            except KeyError:
+                raise click.BadParameter(f"""Invalid chip config for property "{prop_name}".
+                    \rExpected a string, a dict with 'prop' and 'slice' keys, or None.""")
+            measurements_dict[prop_name] = raw_measurements[p][s]
+    
+    return measurements_dict

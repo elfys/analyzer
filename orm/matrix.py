@@ -10,11 +10,9 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from orm import (
-    AbstractRepository,
-    Base,
-)
-
+from .abstract_repository import AbstractRepository
+from .base import Base
+from .chip import ChipRepository
 
 class Matrix(Base):
     __tablename__ = 'matrix'
@@ -30,8 +28,6 @@ class MatrixRepository(AbstractRepository[Matrix]):
     model = Matrix
     
     def get_or_create_from_configs(self, matrix_name, wafer_name, matrix_config) -> Matrix:
-        from orm import ChipRepository
-        
         width, height = matrix_config['width'], matrix_config['height']
         chip_names = [f"{matrix_name}_{i}{j}" for i in range(width) for j in range(height)]
         chips = ChipRepository(self.session).get_or_create_chips_for_wafer(chip_names, wafer_name)

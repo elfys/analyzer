@@ -63,8 +63,8 @@ measure:
     name: anode_current
 
 chips:
-  - voltage_input: voltage_input
-    anode_current: anode_current
+  - voltage_input:
+    anode_current:
     cathode_current: common_cathode_current
 
 

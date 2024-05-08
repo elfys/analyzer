@@ -84,7 +84,7 @@ class TemperatureInstrument:
         
         # TODO: does it work with simple 'temperature' instead of sensor_id?
         sensor: YTemperature = YTemperature.FindTemperature(self.sensor_id)
-        if not (sensor.isOnline()):
+        if not sensor.isOnline():
             raise RuntimeError("Temperature sensor is not connected")
         self.sensor = sensor
         return self

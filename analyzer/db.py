@@ -1,7 +1,10 @@
 import os
 import subprocess
 import time
-from typing import Optional, cast
+from typing import (
+    Optional,
+    cast,
+)
 
 import click
 import keyring
@@ -9,11 +12,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.exc import OperationalError
 
+from utils.get_db_url import get_db_url
 from .context import (
     AnalyzerContext,
     pass_analyzer_context,
 )
-from utils import get_db_url
 
 
 @click.command(name="set", help="Set database credentials.")
@@ -105,9 +108,8 @@ def db_group():
 def find_in_ctx(ctx: click.Context, key: str):
     if key in ctx.params:
         return ctx.params[key]
-    elif key in ctx.obj:
+    if key in ctx.obj:
         return ctx.obj[key]
-    elif ctx.parent:
+    if ctx.parent:
         return find_in_ctx(ctx.parent, key)
-    else:
-        return None
+    return None

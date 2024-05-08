@@ -5,13 +5,13 @@ from sqlalchemy import (
     select,
 )
 
-from .context import (
-    AnalyzerContext,
-    pass_analyzer_context,
-)
 from orm import (
     Chip,
     Wafer,
+)
+from .context import (
+    AnalyzerContext,
+    pass_analyzer_context,
 )
 
 
@@ -71,4 +71,3 @@ def show_group():
     pd.set_option("display.max_columns", None)
     pd.set_option("display.max_rows", None)
     pd.set_option("styler.format.formatter", lambda: print("called"))
-    pass

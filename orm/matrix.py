@@ -14,6 +14,7 @@ from .abstract_repository import AbstractRepository
 from .base import Base
 from .chip import ChipRepository
 
+
 class Matrix(Base):
     __tablename__ = 'matrix'
     

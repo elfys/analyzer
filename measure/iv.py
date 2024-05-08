@@ -138,7 +138,7 @@ def measure_setup(
     validate_temperature(temperature, automatic)
     
     ctx.logger.info(f"Measuring {', '.join([c.name for c in chips])}")
-    if (minimization_config:= setup_config["program"].get("minimum")) is not None:
+    if (minimization_config := setup_config["program"].get("minimum")) is not None:
         raw_measurements = get_minimal_measurements(minimization_config)
     else:
         raw_measurements = get_raw_measurements()

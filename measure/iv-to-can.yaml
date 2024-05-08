@@ -33,17 +33,17 @@ measure:
     name: anode_current_3
   - command: ":DATA? 'I4'"
     type: "query_ascii_values"
-    name: cathode_current
+    name: common_cathode_current
 chips:
-  - voltage_input: voltage_input
+  - voltage_input:
     anode_current: anode_current_1
-    cathode_current: cathode_current
-  - voltage_input: voltage_input
+    cathode_current: common_cathode_current
+  - voltage_input:
     anode_current: anode_current_2
-    cathode_current: cathode_current
-  - voltage_input: voltage_input
+    cathode_current: common_cathode_current
+  - voltage_input:
     anode_current: anode_current_3
-    cathode_current: cathode_current
+    cathode_current: common_cathode_current
 
 setups:
   - name: 0.01v sweep
@@ -84,7 +84,10 @@ setups:
       - ":PAGE:DISP:LIST 'V4','I1', 'I2', 'I3', 'I4'"  # selects the variable names for LIST display
       - ":PAGE:GLIS:SCAL:AUTO ONCE"
     program:
-      minimum: true
+      minimum:
+        x: voltage_input
+        y: common_cathode_current
+        timeout: 0.5
       validation:
         cathode_current[0]:
           min:

@@ -1,3 +1,9 @@
+import logging
+from typing import (
+    Any,
+    Generator,
+)
+
 import keyring
 import pytest  # noqa F401
 import pytest  # noqa F401
@@ -19,6 +25,8 @@ from typeguard import (
     TypeguardFinder,
     install_import_hook,
 )
+
+from analyzer.tests.log_mem_handler import LogMemHandler
 
 
 def pytest_addoption(parser):
@@ -119,3 +127,19 @@ class CustomFinder(TypeguardFinder):
 
 
 install_import_hook(None, cls=CustomFinder)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def test_logger():
+    logger = logging.getLogger("test")
+    logger.setLevel(logging.INFO)
+    yield logger
+    logger.handlers.clear()
+
+
+@pytest.fixture
+def log_handler(test_logger) -> Generator[LogMemHandler, Any, Any]:
+    handler = LogMemHandler()
+    test_logger.addHandler(handler)
+    yield handler
+    test_logger.removeHandler(handler)

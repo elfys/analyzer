@@ -1,20 +1,10 @@
-import logging
 from pathlib import Path
 
 import pytest  # noqa F401
 from click.testing import CliRunner
 
 from .fixtures import *  # noqa F401
-from .log_mem_handler import LogMemHandler
 from ..context import AnalyzerContext
-
-
-@pytest.fixture(scope="session", autouse=True)
-def test_logger():
-    logger = logging.getLogger("test")
-    logger.setLevel(logging.INFO)
-    yield logger
-    logger.handlers.clear()
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -38,13 +28,6 @@ def file_items(request, runner: CliRunner):
             temp_file.write_bytes(content)
         yield file_items
 
-
-@pytest.fixture
-def log_handler(test_logger):
-    handler = LogMemHandler()
-    test_logger.addHandler(handler)
-    yield handler
-    test_logger.removeHandler(handler)
 
 
 @pytest.fixture

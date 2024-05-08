@@ -23,7 +23,6 @@ measure:
 
 chips:
   - voltage_input:
-      prop: voltage_input
     capacitance:
       prop: output
       slice: [ null, null, 4 ]
@@ -53,12 +52,12 @@ setups:
 
     program:
       validation:
-        output[-4]: # last of output[::4] corresponds to capacitance at 0V
+        capacitance[-1]:
           min:
             value: !!float 70e-13
             message: Capacitance is too low. Check if there is a good contact.
-        output[0]:
+        capacitance[0]:
           max:
-            value: !!float 1e+37
+            value: !!float 1e+10
             message: Instrument overflow error
       measurements_kwargs: { }

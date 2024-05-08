@@ -11,6 +11,7 @@ from utils import (
 from .common import (
     apply_configs,
     get_raw_measurements,
+    preprocess_measurements,
     validate_chip_names,
     validate_measurements,
 )
@@ -50,40 +51,34 @@ def cv(
     automatic_mode: bool,
 ):
     chips = ChipRepository(ctx.session).get_or_create_chips_for_wafer(chip_names, wafer_name)
+    ctx.session.add_all(chips)
+    ctx.session.commit()
     
     for setup_config in ctx.configs["setups"]:
         ctx.logger.info(f'Executing setup {setup_config["name"]}')
         apply_configs(setup_config["instrument"])
         raw_measurements = get_raw_measurements()
         
-        validate_measurements(raw_measurements, setup_config, automatic_mode)
-        
         for chip, chip_config in zip(chips, ctx.configs["chips"], strict=True):
+            measurements_dict = preprocess_measurements(raw_measurements, chip_config)
+            validate_measurements(measurements_dict, setup_config, automatic_mode)
+            
             measurements_kwargs = dict(
                 chip_state_id=chip_state.id,
                 chip=chip,
                 **setup_config["program"]["measurements_kwargs"],
             )
-            measurements = create_measurements(raw_measurements, chip_config, **measurements_kwargs)
+            measurements = create_measurements(measurements_dict, **measurements_kwargs)
             ctx.session.add_all(measurements)
     ctx.session.commit()
     ctx.logger.info("Measurements saved")
 
 
 def create_measurements(
-    raw_measurements: dict[str, list], chip_config: dict, **kwargs
+    measurements_dict: dict[str, list], **kwargs
 ) -> list[CVMeasurement]:
-    raw_measurements.get("voltage")
-    kwarg_keys = list(chip_config.keys())
-    
-    grouped_numbers = []
-    for key in kwarg_keys:
-        s = slice(*chip_config[key].get("slice", [None]))
-        p = chip_config[key].get("prop", None)
-        grouped_numbers.append(raw_measurements[p][s])
     measurements = []
-    
-    for data in zip(*grouped_numbers, strict=True):
-        measurement_kwargs = dict(zip(kwarg_keys, data, strict=True))
-        measurements.append(CVMeasurement(**measurement_kwargs, **kwargs))
+    for values in zip(*measurements_dict.values(), strict=True):
+        data = dict(zip(measurements_dict.keys(), values, strict=True))
+        measurements.append(CVMeasurement(**data, **kwargs))
     return measurements

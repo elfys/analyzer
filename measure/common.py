@@ -81,7 +81,7 @@ def do_validation(measurements: dict[str, list], rules: dict) -> Optional[str]:
             if not values:
                 raise click.BadParameter(
                     f"Value \"{value_name}\" not found in measurements, but it is required for validation.")
-            elif len(values) > 1:
+            if len(values) > 1:
                 raise click.BadParameter(f"Value \"{value_name}\" is ambiguous in measurements.")
             value = values[0].value
             if rules.get("abs"):

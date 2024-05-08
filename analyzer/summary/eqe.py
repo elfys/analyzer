@@ -13,10 +13,6 @@ from sqlalchemy.orm import (
     joinedload,
 )
 
-from ..context import (
-    AnalyzerContext,
-    pass_analyzer_context,
-)
 from orm import (
     EqeConditions,
     EqeSession,
@@ -26,6 +22,10 @@ from utils import (
     get_indexed_filename,
 )
 
+from ..context import (
+    AnalyzerContext,
+    pass_analyzer_context,
+)
 
 
 @click.command(name="eqe", help="Make summary for EQE measurements' data.")
@@ -59,7 +59,7 @@ def summary_eqe(
         raise click.UsageError(
             "--wafer and --session options are not allowed to use simultaneously"
         )
-    elif not eqe_session and not wafer_name:
+    if not eqe_session and not wafer_name:
         raise click.UsageError("Neither --wafer nor --session are specified")
     title = f"{wafer_name} wafer" if wafer_name else f"{eqe_session.date} session"
     

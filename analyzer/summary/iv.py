@@ -147,8 +147,8 @@ def summary_iv(
     
     if len(chips_types) > 1:
         ctx.logger.warning(
-            f"Multiple chip types are found ({chips_types}). Plotting is not supported and will be skipped."
-        )
+            f"Multiple chip types are found ({chips_types}). "
+            "Plotting is not supported and will be skipped.")
     else:
         chips_type = next(iter(chips_types))
         fig, axes = plot_data(

@@ -99,7 +99,7 @@ def summary_cv(
 
     query: Query = (
         ctx.session.query(CVMeasurement)
-        .filter(CVMeasurement.chip.has(Chip.wafer.__eq__(wafer)))
+        .filter(CVMeasurement.chip.has(Chip.wafer == wafer))
         .options(joinedload(CVMeasurement.chip))
     )
     
@@ -138,8 +138,8 @@ def summary_cv(
     
     if len(chips_types) > 1:
         ctx.logger.warning(
-            f"Multiple chip types are found ({chips_types}). Plotting is not supported and will be skipped."
-        )
+            f"Multiple chip types are found ({chips_types}). "
+            "Plotting is not supported and will be skipped.")
     else:
         chips_type = next(iter(chips_types))
         fig, axes = plot_data(measurements, voltages, quantile, thresholds.get(chips_type, {}))

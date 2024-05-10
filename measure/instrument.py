@@ -33,15 +33,7 @@ class PyVisaInstrument:
         self.logger = logger
     
     def __enter__(self):
-        try:
-            self.resource = self.rm.open_resource(self.resource_id, **self.config)
-        except pyvisa.Error as e:
-            try:
-                self.resource.close()
-            except Exception:
-                pass
-            self.logger.error(f"PYVISA error: {e}")
-        
+        self.resource = self.rm.open_resource(self.resource_id, **self.config)
         self.check_errors()
         
         return self
@@ -54,18 +46,19 @@ class PyVisaInstrument:
         return "<%s: %s>" % (self.__class__.__name__, self.name)
     
     def __eq__(self, other):
-        return self.name == other.name and self.config["resource"] == other.config["resource"]
+        return self.name == other.name and self.resource_id == other.resource_id
     
     def __getattr__(self, name):
         return getattr(self.resource, name)
     
     def check_errors(self):
         if 'SMU 2636' in self.name and isinstance(self.resource, MessageBasedResource):
-            logger = logging.getLogger("measure")
-            while int(float(self.resource.query("print(errorqueue.count)"))) > 0:
-                error = self.resource.query("print(errorqueue.next())")
-                logger.warning(f"Instrument error: {error}")
-        
+            try:
+                while int(float(self.resource.query("print(errorqueue.count)"))) > 0:
+                    error = self.resource.query("print(errorqueue.next())")
+                    self.logger.warning(f"Instrument error: {error}")
+            except Exception as e:
+                self.logger.error(f"Error checking {self} error queue: {e}")
         # TODO: check errors for other instruments
 
 

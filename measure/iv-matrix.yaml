@@ -13,7 +13,7 @@ instruments:
     kind: "pyvisa"
 #    invert_voltage: true # NO, the instrument is connected such that the voltage is not inverted
     kwargs:
-      timeout: 200000 # 200s
+      timeout: 40000 # 40s
   scanner:
     resource: 'GPIB0::15::INSTR'
     name: 'Scanner 705'
@@ -42,8 +42,8 @@ measure:
     type: "write"
   - command: "smua.trigger.initiate()"
     type: "write"
-  - command: "waitcomplete()"
-    type: "write"
+  - command: "print(waitcomplete())"
+    type: "query"
 
   # turn off the current
   - command: "smua.source.output = smua.OUTPUT_OFF"

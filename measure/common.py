@@ -5,14 +5,17 @@ from typing import (
 )
 
 import click
+import pyvisa
 import pandas as pd
 from jsonpath_ng import parse
+from pyvisa.constants import VI_ERROR_TMO
 
 from .context import (
     MeasureContext,
     from_config,
     pass_measure_context,
 )
+from .exceptions import InvalidMeasurementError
 from .instrument import PyVisaInstrument
 
 
@@ -23,16 +26,30 @@ def apply_configs(ctx: MeasureContext, commands: list[str]):
         instrument.write(command)
 
 
-def execute_command(instrument: PyVisaInstrument, command: str, command_type: str):
-    if command_type == "query":
-        return instrument.query(command)
-    if command_type == "write":
-        return instrument.write(command)
-    if command_type == "query_ascii_values":
-        return list(instrument.query_ascii_values(command))
-    if command_type == "query_csv_values":
-        return [float(value) for value in instrument.query(command).split(",")]
-    raise click.BadParameter(f"Invalid command type \"{command_type}\".")
+def execute_command(
+    instrument: PyVisaInstrument,
+    command: str,
+    command_type: str
+):
+    command_types = {
+        "write": instrument.write,
+        "query": instrument.query,
+        "query_ascii_values": instrument.query_ascii_values,
+        "query_csv_values": lambda cmd: [float(value) for value in instrument.query(cmd).split(",")]
+    }
+    
+    if command_type not in command_types:
+        raise click.BadParameter(f"Invalid command type \"{command_type}\".")
+    
+    try:
+        return command_types[command_type](command)
+    except pyvisa.VisaIOError as e:
+        advice = ""
+        if e.error_code == VI_ERROR_TMO:
+            advice = ("\nTry to increase `kwargs.timeout`, `smub.measure.delay` or "
+                      "`trigger.timer[1].delay` in the config file.")
+        
+        raise RuntimeError(f"PyVisaError: {e}{advice}")
 
 
 @from_config("measure")
@@ -66,7 +83,7 @@ def validate_measurements(
         index=False, float_format="%.2e",
     ))
     if automatic_mode:
-        raise RuntimeError("Measurement is invalid")
+        raise InvalidMeasurementError()
     
     click.confirm(
         "Do you want to save these measurements?",

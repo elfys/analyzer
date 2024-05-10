@@ -171,8 +171,8 @@ class TestParseIV:
         result = runner.invoke(parse_iv, ["--help"])
         assert result.exit_code == 0
     
-    def test_invoke_from_root_group(self, runner, ctx_obj):
-        result = runner.invoke(analyzer, ["parse", "iv", "nothing.dat"], obj=ctx_obj)
+    def test_invoke_from_root_group(self, runner):
+        result = runner.invoke(analyzer, ["parse", "iv", "nothing.dat"])
         assert result.exit_code == 0
 
 

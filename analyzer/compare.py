@@ -3,6 +3,7 @@ from time import strftime
 from typing import (
     Iterable,
     Sequence,
+    cast,
 )
 
 import click
@@ -11,6 +12,7 @@ import pandas as pd
 from openpyxl.styles.numbers import FORMAT_PERCENTAGE_00
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
+from pandas import DataFrame
 from sqlalchemy import (
     bindparam,
     select,
@@ -66,7 +68,7 @@ from .context import (
     show_default="wafers-comparison-{datetime}.xlsx",
 )
 def compare_wafers(
-    ctx: AnalyzerContext, wafers: set[Wafer], chip_states: Sequence[ChipState], file_name: str
+    ctx: AnalyzerContext, wafers: list[Wafer], chip_states: Sequence[ChipState], file_name: str
 ):
     sheets_data = get_sheets_data(wafers)
     
@@ -137,11 +139,14 @@ def get_sheets_data(ctx: AnalyzerContext, wafers: Iterable[Wafer]) -> dict[str, 
     
     for wafer in wafers:
         values_frame = pd.read_sql_query(
-            conditions_query.params(wafer_id=wafer.id), ctx.session.connection()
+            conditions_query.params(wafer_id=wafer.id),
+            ctx.session.connection(),
+            # in some cases it has type of None and triggers warning
+            dtype={"anode_current_corrected": float}
         )
         
         if values_frame.empty:
-            ctx.logger.warning(f"Not found measurements for {wafer.name}")
+            ctx.logger.warning(f"Measurements for {wafer.name} are not found")
             continue
         sheets_data["frame_keys"].append(wafer.name)
         
@@ -155,7 +160,7 @@ def get_sheets_data(ctx: AnalyzerContext, wafers: Iterable[Wafer]) -> dict[str, 
             inplace=True,
         )
         
-        values_frame = values_frame.pivot_table(
+        values_frame: DataFrame = values_frame.pivot_table(
             values="value",
             columns="voltage_input",
             index=["chip_type", "chip_state_id", "chip_id"],
@@ -167,7 +172,7 @@ def get_sheets_data(ctx: AnalyzerContext, wafers: Iterable[Wafer]) -> dict[str, 
         
         def remove_cols_wo_thresholds(frame: pd.DataFrame):
             chip_type = frame.name
-            cols_to_drop = set(frame.columns.values) - set(thresholds[chip_type].keys())
+            cols_to_drop = set(frame.columns.values) - set(thresholds.get(chip_type, {}).keys())
             frame.loc[:, list(cols_to_drop)] = np.nan
             return frame
         
@@ -181,10 +186,18 @@ def get_sheets_data(ctx: AnalyzerContext, wafers: Iterable[Wafer]) -> dict[str, 
     return sheets_data
 
 
-def get_density_frame(values_frame):
+def get_density_frame(values_frame: pd.DataFrame) -> pd.DataFrame:
+    chip_types = values_frame.index.unique(values_frame.index.names.index("chip_type"))
+    areas = {}
+    for chip_type in chip_types:
+        try:
+            areas[chip_type] = ChipRepository.get_area(chip_type)
+        except AttributeError:
+            areas[chip_type] = np.nan
+    
     def divide_by_area(frame):
         chip_type = frame.name
-        return frame / ChipRepository.get_area(chip_type)
+        return frame / areas[chip_type]
     
     density_frame = (
         values_frame.groupby("chip_type")
@@ -193,15 +206,16 @@ def get_density_frame(values_frame):
         .median()
     )
     density_frame = density_frame.unstack(level="chip_type")
-    return density_frame
+    return cast(pd.DataFrame, density_frame)
 
 
-def get_yield_frame(thresholds, values_frame) -> pd.DataFrame:
+def get_yield_frame(thresholds, values_frame: pd.DataFrame) -> pd.DataFrame:
+    chip_types = values_frame.index.unique(values_frame.index.names.index("chip_type"))
     row_thresholds = {
         chip_type: np.array(
-            [chip_type_thresholds.get(column, np.nan) for column in values_frame.columns]
+            [thresholds.get(chip_type, {}).get(voltage, np.nan) for voltage in values_frame.columns]
         )
-        for chip_type, chip_type_thresholds in thresholds.items()
+        for chip_type in chip_types
     }
     
     def pass_threshold(frame):
@@ -215,18 +229,11 @@ def get_yield_frame(thresholds, values_frame) -> pd.DataFrame:
         )
     
     pass_frame = values_frame.groupby("chip_type").apply(pass_threshold)
-    total_series = pass_frame.min(axis=1).groupby("chip_state_id").mean()
+    total_series = cast(pd.Series, pass_frame.min(axis=1).groupby("chip_state_id").mean())
     total_series.name = ("Total", "")
-    yield_frame = pass_frame.groupby(["chip_type", "chip_state_id"]).mean()
+    yield_frame = cast(pd.DataFrame, pass_frame.groupby(["chip_type", "chip_state_id"]).mean())
     yield_frame = yield_frame.unstack(level="chip_type")
-    return pd.concat(
-        [
-            yield_frame,
-            total_series,
-        ],
-        axis=1,
-        copy=False,
-    )
+    return pd.concat([yield_frame, total_series], axis=1, copy=False)
 
 
 def get_leakage_frame(values_frame) -> pd.DataFrame:
@@ -244,10 +251,10 @@ def add_perimeter_area_level(ctx: AnalyzerContext, index: pd.MultiIndex) -> pd.M
         try:
             perimeter = ChipRepository.get_perimeter(chip_type)
             area = ChipRepository.get_area(chip_type)
+            perimeter_area = perimeter / area
         except AttributeError:
             ctx.logger.warning(f"Chip {chip_type} has no perimeter or area")
-            continue
-        perimeter_area = perimeter / area
+            perimeter_area = np.nan
         idx_tuples.append((voltage, chip_type, Decimal(perimeter_area).quantize(Decimal("0.001"))))
     return pd.MultiIndex.from_tuples(idx_tuples, names=[*index.names, "Perimeter / area"])
 

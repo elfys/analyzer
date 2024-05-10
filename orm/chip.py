@@ -82,8 +82,8 @@ class SimpleChip(Chip):  # all chips with size, have IV and CV measurements
     chip_sizes = {
         "A": (1.69, 1.69),
         "B": (1.69, 1.69),
-        "C": None,
-        "D": None,
+        "C": (1.23, 1.23),
+        "D": (1.23, 1.23),
         "E": (1.806, 1.806),
         "F": (2.56, 1.25),
         "G": (1.4, 3.25),

@@ -6,8 +6,8 @@ from orm import chip as chip_module
 from orm.chip import (
     AChip,  # noqa;
     ChipRepository,
-    DChip,  # noqa
     FChip,  # noqa
+    REFChip,  # noqa
     SimpleChip,
 )
 
@@ -22,22 +22,22 @@ class TestSimpleChip:
         assert AChip.get_area() == pytest.approx(2.8561)  # Assuming the chip size is (1.69, 1.69)
     
     def test_get_area_with_unknown_chip_size(self):
-        with pytest.raises(AttributeError, match="Chip size for DChip is unknown"):
-            DChip.get_area()
+        with pytest.raises(AttributeError, match="Chip size for REFChip is unknown"):
+            REFChip.get_area()
     
     def test_get_perimeter_with_known_chip_size(self):
         assert FChip.get_perimeter() == pytest.approx(7.62)  # Assuming the chip size is (2.56, 1.25)
     
     def test_get_perimeter_with_unknown_chip_size(self):
-        with pytest.raises(AttributeError, match="Chip size for DChip is unknown"):
-            DChip.get_perimeter()
+        with pytest.raises(AttributeError, match="Chip size for REFChip is unknown"):
+            REFChip.get_perimeter()
         
+    def test_get_chip_size_with_known_chip_size(self):
         assert FChip.get_chip_size() == pytest.approx((2.56, 1.25))
     
     def test_get_chip_size_with_unknown_chip_size(self):
-        SimpleChip.chip_size = None
         with pytest.raises(AttributeError):
-            SimpleChip.get_chip_size()
+            REFChip.get_chip_size()
     
     def test_x_coordinate_with_valid_chip_name(self):
         chip = AChip(name="A1234")

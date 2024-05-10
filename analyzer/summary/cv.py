@@ -12,7 +12,6 @@ import click
 import pandas as pd
 from openpyxl.styles import PatternFill
 from pandas import DataFrame
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import (
     Query,
     joinedload,
@@ -22,12 +21,14 @@ from orm import (
     CVMeasurement,
     Chip,
     ChipState,
-    WaferRepository,
+    Wafer,
 )
 from utils import (
     EntityOption,
     get_indexed_filename,
     get_thresholds,
+    validate_chip_types,
+    wafer_loader,
 )
 from .common import (
     apply_conditional_formatting,
@@ -51,8 +52,15 @@ class SheetsCVData(TypedDict):
 
 @click.command(name="cv", help="Make summary (png and xlsx) for CV measurements' data.")
 @pass_analyzer_context
-@click.option("-t", "--chips-type", help="Type of the chips to analyze.")
-@click.option("-w", "--wafer", "wafer_name", prompt="Wafer name", help="Wafer name.")
+@click.option(
+    "-t", "--chips-type", help="Type of the chips to analyze.",
+    callback=validate_chip_types,
+)
+@click.option(
+    "-w", "--wafer", prompt="Wafer name", help="Wafer name.",
+    required=True,
+    callback=wafer_loader,
+)
 @click.option(
     "-s",
     "--chip-state",
@@ -85,27 +93,20 @@ class SheetsCVData(TypedDict):
 def summary_cv(
     ctx: AnalyzerContext,
     chips_type: str | None,
-    wafer_name: str,
+    wafer: Wafer,
     chip_states: list[ChipState],
     quantile: tuple[float, float],
     before: datetime | date | None,
     after: datetime | date | None,
 ):
-    try:
-        wafer = WaferRepository(ctx.session).get(name=wafer_name)
-    except NoResultFound:
-        ctx.logger.warning(f"Wafer {wafer_name} not found.")
-        raise click.Abort()
-
     query: Query = (
         ctx.session.query(CVMeasurement)
         .filter(CVMeasurement.chip.has(Chip.wafer == wafer))
         .options(joinedload(CVMeasurement.chip))
     )
     
-    # TODO: use EntityChoice with default=ALL instead
     if chips_type is not None:
-        query = query.filter(CVMeasurement.chip.has(Chip.type.__eq__(chips_type)))
+        query = query.filter(CVMeasurement.chip.has(Chip.type == chips_type))
     else:
         ctx.logger.info(
             "Chips type (-t or --chips-type) is not specified. Analyzing all chip types."
@@ -134,7 +135,7 @@ def summary_cv(
     voltages = sorted(Decimal(v) for v in ["-5", "0", "-35"])
     thresholds = get_thresholds(ctx.session, "CV")
     
-    file_name = get_indexed_filename(f"Summary-CV-{wafer_name}", ("png", "xlsx"))
+    file_name = get_indexed_filename(f"Summary-CV-{wafer.name}", ("png", "xlsx"))
     
     if len(chips_types) > 1:
         ctx.logger.warning(
@@ -143,7 +144,7 @@ def summary_cv(
     else:
         chips_type = next(iter(chips_types))
         fig, axes = plot_data(measurements, voltages, quantile, thresholds.get(chips_type, {}))
-        fig.suptitle(wafer_name, fontsize=14)
+        fig.suptitle(wafer.name, fontsize=14)
         for ax_row in axes:
             ax_row[0].set_xlabel("Capacitance [pF]")
         

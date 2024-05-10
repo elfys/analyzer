@@ -21,8 +21,12 @@ class TestGetIvMeasurements:
             IVMeasurement(voltage_input=1, cathode_current=60)
         ]
         conditions = [
-            IvConditions(id=1, measurements=low_amplitude_measurements, chip_id=1),
-            IvConditions(id=2, measurements=high_amplitude_measurements, chip_id=1),
+            IvConditions(
+                id=1, measurements=low_amplitude_measurements, chip_id=1, datetime="2021-01-01"),
+            IvConditions(
+                id=2, measurements=high_amplitude_measurements, chip_id=1, datetime="2021-01-02"),
+            IvConditions(
+                id=3, measurements=low_amplitude_measurements, chip_id=1, datetime="2021-01-03"),
         ]
         return conditions
     
@@ -48,3 +52,4 @@ class TestGetIvMeasurements:
         assert len(zero_measurement) == 1, "Should have one measurement with voltage 0"
         assert zero_measurement[0].cathode_current == 2, \
             "Should have the measurement with low amplitude"
+        assert zero_measurement[0].conditions.datetime == "2021-01-03", "Should sort by datetime"

@@ -12,7 +12,6 @@ from typing import (
 import click
 import pandas as pd
 from openpyxl.styles import PatternFill
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import (
     Query,
     contains_eager,
@@ -25,12 +24,14 @@ from orm import (
     ChipState,
     IVMeasurement,
     IvConditions,
-    WaferRepository,
+    Wafer,
 )
 from utils import (
     EntityOption,
     get_indexed_filename,
     get_thresholds,
+    validate_chip_types,
+    wafer_loader,
 )
 from .common import (
     apply_conditional_formatting,
@@ -54,8 +55,14 @@ class SheetsIVData(TypedDict):
 
 @click.command(name="iv", help="Make summary (png and xlsx) for IV measurements' data.")
 @pass_analyzer_context
-@click.option("-t", "--chips-type", help="Type of the chips to analyze.")
-@click.option("-w", "--wafer", "wafer_name", prompt=True, help="Wafer name.")
+@click.option(
+    "-t", "--chips-type", help="Type of the chips to analyze.",
+    callback=validate_chip_types,
+)
+@click.option(
+    "-w", "--wafer", prompt=True, help="Wafer name.", required=True,
+    callback=wafer_loader
+)
 @click.option(
     "-s",
     "--chip-state",
@@ -88,18 +95,12 @@ class SheetsIVData(TypedDict):
 def summary_iv(
     ctx: AnalyzerContext,
     chips_type: str | None,
-    wafer_name: str,
+    wafer: Wafer,
     chip_states: Sequence[ChipState],
     quantile: tuple[float, float],
     before: datetime | date | None,
     after: datetime | date | None,
 ):
-    try:
-        wafer = WaferRepository(ctx.session).get(name=wafer_name)
-    except NoResultFound:
-        ctx.logger.warning(f"Wafer {wafer_name} not found.")
-        raise click.Abort()
-    
     query: Query = (
         ctx.session.query(IvConditions)
         .join(IvConditions.measurements)
@@ -114,7 +115,7 @@ def summary_iv(
         )
     )
     
-    if chips_type is not None:
+    if chips_type:
         query = query.filter(IvConditions.chip.has(Chip.type == chips_type))
     else:
         ctx.logger.info(
@@ -126,7 +127,7 @@ def summary_iv(
         before = before if before is not None else date.max
         query = query.filter(IvConditions.datetime.between(after, before))
     
-    conditions = query.all()
+    conditions: list[IvConditions] = query.all()
     
     if not conditions:
         ctx.logger.warning("No measurements found.")
@@ -136,13 +137,13 @@ def summary_iv(
     sheets_data = get_sheets_iv_data(measurements)
     
     voltages = list(sheets_data["anode"].columns.intersection(
-        [Decimal(v) for v in ("-1", "0.01", "5", "6", "10", "20")]
+        [Decimal(v) for v in {"-1", "0.01", "5", "6", "10", "20"}]
     ))
     thresholds = get_thresholds(ctx.session, "IV")
     
     chips_types = {chips_type} if chips_type else {condition.chip.type for condition in conditions}
     
-    title = f"{wafer_name} {','.join(chips_types)}"
+    title = f"{wafer.name} {','.join(chips_types)}"
     file_name = get_indexed_filename(f"Summary-IV-{title.replace(' ', '-')}", ("png", "xlsx"))
     
     if len(chips_types) > 1:
@@ -177,12 +178,13 @@ def get_iv_measurements(conditions: list[IvConditions]) -> list[IVMeasurement]:
     # thus more precise measurements with voltage input from -0.01 to 0.01 will overwrite less
     # precise from -1 to 20
     
-    def get_voltage_amplitude(condition: IvConditions):
+    def get_sort_keys(condition: IvConditions):
         voltages = [m.voltage_input for m in condition.measurements]
-        return max(voltages) - min(voltages)
+        voltage_amplitude = max(voltages) - min(voltages)
+        return voltage_amplitude, condition.datetime
     
     non_empty_conditions = [c for c in conditions if c.measurements]
-    sorted_conditions = sorted(non_empty_conditions, key=get_voltage_amplitude, reverse=True)
+    sorted_conditions = sorted(non_empty_conditions, key=get_sort_keys, reverse=True)
     
     # get all measurements, deduplicated by voltage and chip name
     measurements = (

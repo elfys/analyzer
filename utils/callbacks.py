@@ -5,9 +5,14 @@ from typing import Sequence
 
 import click
 from sqlalchemy import desc
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
-from orm import EqeSession
+from orm import (
+    EqeSession,
+    Wafer,
+    WaferRepository,
+)
 
 
 def eqe_session_date(ctx: click.Context, param: click.Parameter, session_date: datetime | None):
@@ -29,7 +34,7 @@ def eqe_session_date(ctx: click.Context, param: click.Parameter, session_date: d
     return eqe_session
 
 
-def flatten_options_type(values: str | Sequence[str]) -> set[str]:
+def flatten_csv_tuples(values: str | Sequence[str]) -> set[str]:
     if isinstance(values, str):
         return set(re.split(r",\s?", values))
     else:
@@ -40,5 +45,28 @@ def flatten_options_type(values: str | Sequence[str]) -> set[str]:
         )
 
 
-def flatten_options(ctx, param, values: str | Sequence[str]) -> set[str]:
-    return flatten_options_type(values)
+def wafer_loader(ctx: click.Context, param: click.Parameter, value: str | Sequence[str] | None):
+    if not value:
+        return None
+    wafer_names = {n.upper() for n in flatten_csv_tuples(value)}
+    if not param.multiple and len(wafer_names) > 1:
+        raise click.BadParameter(
+            "Multiple wafers are not supported. Please provide only one wafer."
+        )
+    
+    from analyzer.context import AnalyzerContext
+    obj = ctx.find_object(AnalyzerContext)
+    
+    if param.multiple:
+        wafers = WaferRepository(obj.session).get_all_by(Wafer.name.in_(wafer_names))
+        non_existing_wafers = wafer_names - {w.name for w in wafers}
+        if non_existing_wafers:
+            obj.logger.warning(
+                f"Wafers {non_existing_wafers} not found. Continuing with existing wafers.")
+        return wafers
+    else:
+        try:
+            return WaferRepository(ctx.obj.session).get(name=wafer_names.pop())
+        except NoResultFound:
+            obj.logger.warning(f"Wafer {value} not found.")
+            raise click.Abort()

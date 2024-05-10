@@ -26,8 +26,8 @@ from orm import (
 )
 from utils import (
     EntityOption,
-    flatten_options_type,
     get_thresholds,
+    wafer_loader,
 )
 from .context import (
     AnalyzerContext,
@@ -40,10 +40,11 @@ from .context import (
 @click.option(
     "-w",
     "--wafers",
-    "wafer_names",
-    type=flatten_options_type,
     help="Wafers to compare",
     prompt=True,
+    required=True,
+    multiple=True,
+    callback=wafer_loader,
 )
 @click.option(
     "-s",
@@ -65,16 +66,8 @@ from .context import (
     show_default="wafers-comparison-{datetime}.xlsx",
 )
 def compare_wafers(
-    ctx: AnalyzerContext, wafer_names: set[str], chip_states: Sequence[ChipState], file_name: str
+    ctx: AnalyzerContext, wafers: set[Wafer], chip_states: Sequence[ChipState], file_name: str
 ):
-    wafer_names = set(map(lambda x: x.upper(), wafer_names))
-    wafers = ctx.session.execute(select(Wafer).filter(Wafer.name.in_(wafer_names))).scalars().all()
-
-    not_found_wafers = wafer_names - set(wafer.name for wafer in wafers)
-    if not_found_wafers:
-        ctx.logger.warning(f"Wafers not found: {', '.join(not_found_wafers)}")
-        wafer_names -= not_found_wafers
-    
     sheets_data = get_sheets_data(wafers)
     
     if not sheets_data["frame_keys"]:

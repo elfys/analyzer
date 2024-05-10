@@ -16,10 +16,12 @@ from sqlalchemy.orm import (
 from orm import (
     EqeConditions,
     EqeSession,
+    Wafer,
 )
 from utils import (
     eqe_session_date,
     get_indexed_filename,
+    wafer_loader,
 )
 
 from ..context import (
@@ -33,8 +35,8 @@ from ..context import (
 @click.option(
     "-w",
     "--wafer",
-    "wafer_name",
     help="Name of wafer to analyze. Multiple EQE sessions may be found.",
+    callback=wafer_loader,
 )
 @click.option(
     "--session",
@@ -51,19 +53,19 @@ from ..context import (
 )
 def summary_eqe(
     ctx: AnalyzerContext,
-    wafer_name: Optional[str],
+    wafer: Wafer | None,
     eqe_session: Optional[EqeSession],
     no_ref: bool,
 ):
-    if eqe_session and wafer_name:
+    if eqe_session and wafer:
         raise click.UsageError(
             "--wafer and --session options are not allowed to use simultaneously"
         )
-    if not eqe_session and not wafer_name:
+    if not eqe_session and not wafer:
         raise click.UsageError("Neither --wafer nor --session are specified")
-    title = f"{wafer_name} wafer" if wafer_name else f"{eqe_session.date} session"
+    title = f"{wafer.name} wafer" if wafer else f"{eqe_session.date} session"
     
-    conditions = query_eqe_conditions(eqe_session, wafer_name)
+    conditions = query_eqe_conditions(eqe_session, wafer.name)
     if not conditions:
         ctx.logger.warning("No measurements found.")
         raise Exit(0)

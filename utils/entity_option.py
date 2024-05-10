@@ -5,11 +5,9 @@ from typing import (
 
 import click
 from click import Context
-from sqlalchemy.orm import (
-    Session,
-)
+from sqlalchemy.orm import Session
 
-from utils.name_id_interface import NameIdInterface
+from .name_id_interface import NameIdInterface
 
 
 class EntityOption(click.Option):

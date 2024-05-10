@@ -58,7 +58,7 @@ class TestCompareWafers:
         result = runner.invoke(compare_wafers, ["-w", "NONE"], obj=ctx_obj)
         assert result.exit_code == 0
         assert len(log_handler.records) == 2
-        assert log_handler.records[0].message == "Wafers not found: NONE"
+        assert log_handler.records[0].message.startswith("Wafers {'NONE'} not found. Continuing")
         assert log_handler.records[1].message == "No data to compare"
 
     def test_create_excel_file(self, created_file):

@@ -15,19 +15,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.12.2'
           cache: 'pipenv'
-      - run: pip install pipenv
-      - run: pipenv install --deploy
-      - run: echo "VERSION='${{ github.event.inputs.version }}'" > ./version.py
-      - run: pipenv run pyinstaller -c -n analyzer -D analyzer/__main__.py
+
+      - name: Install dependencies
+        run: |
+          pip install pipenv
+          pipenv install --deploy --system
+
+      - name: Set version
+        run: echo "VERSION='${{ github.event.inputs.version }}'" > ./version.py
+
+      - name: Build executable
+        run: pyinstaller -c -n Analyzer -D analyzer/__main__.py
         id: pyinstaller
+
       - name: Create Release Artifact
         uses: thedoctor0/zip-release@main
         with:
           type: 'zip'
           path: './dist/Analyzer/*'
           filename: 'analyzer.zip'
+
       - name: Upload Release
         uses: ncipollo/release-action@v1
         with:

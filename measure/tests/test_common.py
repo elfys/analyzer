@@ -1,11 +1,17 @@
 import itertools
-from unittest.mock import patch
+from unittest.mock import (
+    Mock,
+    patch,
+)
 
 import click
 import pytest
+from pyvisa import VisaIOError
+from pyvisa.resources import MessageBasedResource
 
 from measure import MeasureContext
 from measure.common import (
+    execute_command,
     validate_chip_names,
     validate_measurements,
 )
@@ -185,3 +191,43 @@ class TestValidateMeasurements:
         with pytest.raises(click.BadParameter, match='Unknown validator format in "incorrect"'):
             with click.Context(click.Command('test'), obj=ctx_obj):
                 validate_measurements(valid_measurements, incorrect_config, automatic)
+
+
+class TestExecuteCommand:
+    @pytest.fixture
+    def instrument(self):
+        return Mock(spec=MessageBasedResource)
+    
+    @pytest.fixture
+    def command(self):
+        return "print(waitcomplete())"
+    
+    def test_execute_command_write(self, instrument, command):
+        execute_command(instrument, command, "write")
+        instrument.write.assert_called_once_with(command)
+    
+    def test_execute_command_query(self, instrument, command):
+        execute_command(instrument, command, "query")
+        instrument.query.assert_called_once_with(command)
+    
+    def test_execute_command_query_ascii_values(self, instrument, command):
+        execute_command(instrument, command, "query_ascii_values")
+        instrument.query_ascii_values.assert_called_once_with(command)
+    
+    def test_execute_command_query_csv_values(self, instrument, command):
+        instrument.query.return_value = "1,2,3"
+        result = execute_command(instrument, command, "query_csv_values")
+        instrument.query.assert_called_once_with(command)
+        assert result == [1.0, 2.0, 3.0]
+    
+    def test_execute_command_invalid_type(self, instrument, command):
+        with pytest.raises(Exception, match="Invalid command type"):
+            execute_command(instrument, command, "invalid_type")
+    
+    def test_execute_command_visa_io_error(self, instrument, command):
+        instrument.write.side_effect = VisaIOError(-1073807339)
+        with pytest.raises(
+            RuntimeError,
+            match="Timeout expired before operation completed.\nTry to increase `kwargs.timeout`.*"
+        ):
+            execute_command(instrument, command, "write")

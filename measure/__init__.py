@@ -34,7 +34,7 @@ from .iv import measure_iv_command
     show_default=True,
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False),
 )
-@click.option("--db-url", help="Database URL.", default=os.environ.get("DB_URL"))
+@click.option("--db-url", help="Database URL.", default=lambda: os.environ.get("DB_URL"))
 @click.option("--simulate", is_flag=True, help="Simulate pyvisa instrument.", default=False)
 def measure_group(
     ctx: click.Context,

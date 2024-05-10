@@ -18,7 +18,8 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
+disable_logging = config.get_main_option("disable_logging").lower() == "true"
+if config.config_file_name is not None and not disable_logging:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata

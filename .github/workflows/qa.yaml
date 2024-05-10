@@ -47,10 +47,10 @@ jobs:
         run: pyright
 
       - name: Run analyzer unit tests
-        run: timeout 2m pytest ./analyzer || exit 1
+        run: timeout 2m pytest ./analyzer --db-url='mysql://root:pwd@127.0.0.1:3306/test' || exit 1
 
       - name: Run measure unit tests
-        run: timeout 1m pytest ./measure || exit 1
+        run: timeout 1m pytest ./measure --db-url='mysql://root:pwd@127.0.0.1:3306/test' || exit 1
 
       - name: Run ORM unit tests
-        run: timeout 1m pytest ./orm || exit 1
+        run: timeout 1m pytest ./orm --db-url='mysql://root:pwd@127.0.0.1:3306/test' || exit 1

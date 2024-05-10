@@ -28,6 +28,7 @@ from .context import (
     from_config,
     pass_measure_context,
 )
+from .exceptions import InvalidMeasurementError
 from .instrument import (
     PyVisaInstrument,
     TemperatureInstrument,
@@ -112,13 +113,12 @@ def measure_matrix(
         
         try:
             measure_setup(automatic, [chip], setup_config, conditions_kwargs)
-        except RuntimeError as e:
-            if str(e) == "Measurement is invalid":
-                if automatic:
-                    ...  # do nothing, measure next pixel
-                else:
-                    click.confirm(
-                        "Do you want to continue measuring other pixels?", abort=True, default=True)
+        except InvalidMeasurementError:
+            if automatic:
+                ...  # do nothing, measure next pixel
+            else:
+                click.confirm("Do you want to continue measuring other pixels?",
+                              abort=True, default=True)
         scanner.write("RX")  # open all channels
         ctx.session.commit()  # commit after each chip
 

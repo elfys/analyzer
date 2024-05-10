@@ -6,13 +6,6 @@ devices:
         q: "\n"
         r: "\n"
     dialogues:
-      # - q: ":DATA? 'V4'"
-      # - q: ":DATA? 'I1'"
-      # - q: ":DATA? 'I2'"
-      # - q: ":DATA? 'I3'"
-      # - q: ":DATA? 'I4'"
-
-
       - q: "*IDN?"
         r: "GPIB MOCK"
       - q: "*OPC?"
@@ -39,6 +32,8 @@ devices:
         r: "1.0,0.0,0.0,0.0,2.0,0.0,0.0,0.0,3.0,0.0,0.0,0.0,4.0,0.0,0.0,0.0"
       - q: ":LIST:BIAS:VOLT?"
         r: "-35,-25,-20,-15"
+      - q: "print(waitcomplete())"
+        r: ""
       - q: "print(errorqueue.count)"
         r: "0.00000e+00"
       - q: "print(errorqueue.next())"

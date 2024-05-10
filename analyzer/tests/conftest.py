@@ -29,6 +29,11 @@ def file_items(request, runner: CliRunner):
         yield file_items
 
 
+@pytest.fixture(scope="module")
+def logger_name():
+    return "analyzer"
+
+
 @pytest.fixture
 def ctx_obj(session, log_handler, test_logger):
     ctx = AnalyzerContext()

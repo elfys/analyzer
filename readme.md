@@ -12,30 +12,36 @@
 1. Install pyenv:
     - [Instructions](https://pyenv-win.github.io/pyenv-win/#installation) for windows
     - [Instructions](https://github.com/pyenv/pyenv#installation) for Linux and MacOS
-2. Install PipEnv python module
-   `pip install --user pipenv`
-3. Clone this repository
+2. Clone this repository
    `git clone https://github.com/elfys/analyzer.git`
-4. Navigate to the project directory
+3. Navigate to the project directory
    `cd analyzer`
-5. Install python dependencies
-   `python -m pipenv install --dev`
-     <details><summary>Expected output (on MacOS)</summary>
-     <pre>
-     Creating a virtualenv for this project...
-     Pipfile: ~/projects/analyzer/Pipfile
-     Using ~/.pyenv/versions/3.10.1/bin/python3 (3.10.1) to create virtualenv...
-     ⠦ Creating virtual environment...created virtual environment
-     ✔ Successfully created virtual environment! 
-     Virtualenv location: ~/.local/share/virtualenvs/analyzer_sql-jP6szl67
-     Installing dependencies from Pipfile.lock (f950b0)...
-     🐍   ▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉ 13/13 — 00:00:06
-     Ignoring pywin32: markers 'sys_platform == "win32"' don't match your environment
-     To activate this project's virtualenv, run pipenv shell.
-     Alternatively, run a command inside the virtualenv with pipenv run.
-        </pre></details>
-6. Activating the new virtual environment
-   `python -m pipenv shell`
+4. Install proper python version
+   ```shell
+   pyenv update
+   pyenv install $(cat .python-version)
+   ```
+5. Install pipenv
+   ```shell
+   pip install pipenv
+   ```
+6. Install python dependencies
+   There are different options to install dependencies:
+
+   a. Using project-specific virtual environment, suitable for development
+
+      ```shell
+      mkdir .venv
+      pipenv install --dev
+      ```
+      To activate the new virtual environment use `pipenv shell`
+
+   b. Using global virtual environment, suitable for prober machines
+      
+      ```shell
+      pipenv install --deploy --system 
+      ```
+
 
 ### Useful commands
 

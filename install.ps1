@@ -3,7 +3,10 @@
     Installs analyzer.exe
 
     .DESCRIPTION
-    Installs analyzer.exe to $HOME\.pyenv
+    Installs analyzer.exe
+
+    .PARAMETER OutputDir
+    The directory where analyzer.exe will be installed. If not specified, the default is $HOME\.analyzer
 
     .INPUTS
     None.
@@ -12,41 +15,37 @@
     None.
 
     .EXAMPLE
-    PS> install.ps1
+    PS> install.ps1 -OutputDir "${env:USERPROFILE}\AppData\Local\analyzer_gui\cli"
 
     .LINK
     Online version: https://github.com/elfys/analyzer
 #>
 
-$AnalyzerDir = "${env:USERPROFILE}\.analyzer"
-$LegacyAnalyzerDir = "${env:USERPROFILE}\.analyzing"
+param (
+    [string]$OutputDir = "${env:USERPROFILE}\.analyzer"
+)
 
 Function Main() {
-    if (Test-Path -Path $LegacyAnalyzerDir) {
-      Remove-Item -Path $LegacyAnalyzerDir -Recurse -Force
-    }
-    if (Test-Path -Path $AnalyzerDir) {
-      Remove-Item -Path $AnalyzerDir -Recurse -Force
+    if (Test-Path -Path $OutputDir) {
+      Remove-Item -Path $OutputDir -Recurse -Force
     }
 
-    New-Item -Path $AnalyzerDir -ItemType Directory
-
-    $DownloadPath = "$AnalyzerDir\analyzer.zip"
+    New-Item -Path $OutputDir -ItemType Directory
 
     $Response = Invoke-RestMethod -Uri https://api.github.com/repos/elfys/analyzer/releases/latest
     $DownloadURL = $Response.assets[0].browser_download_url
 
+    $DownloadPath = "${env:USERPROFILE}\AppData\Local\Temp\analyzer.zip"
     Invoke-WebRequest -UseBasicParsing -Uri $DownloadURL -OutFile $DownloadPath
-    Expand-Archive -Path $DownloadPath -DestinationPath $AnalyzerDir
-    Remove-Item -Path $DownloadPath
+    Expand-Archive -Path $DownloadPath -DestinationPath $OutputDir
 
     # Update env vars
 
     $PathParts = [System.Environment]::GetEnvironmentVariable('PATH', "User") -Split ";"
 
     # Remove existing paths, so we don't add duplicates
-    $NewPathParts = $PathParts.Where{ $_ -ne $AnalyzerDir }
-    $NewPathParts = $NewPathParts + $AnalyzerDir
+    $NewPathParts = $PathParts.Where{ $_ -ne $OutputDir }
+    $NewPathParts = $NewPathParts + $OutputDir
     $NewPath = $NewPathParts -Join ";"
     [System.Environment]::SetEnvironmentVariable('PATH', $NewPath, "User")
 

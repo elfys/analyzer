@@ -2,7 +2,7 @@
 
 1. Run the following command in PowerShell to install analyzer.exe
    ```powershell
-   Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/elfys/analyzer/main/install.ps1" -OutFile "./install-analyzer.ps1"; &"./install-analyzer.ps1"; & rm "install-analyzer.ps1"
+   Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/elfys/analyzer/main/install.ps1" -OutFile "./install-analyzer.ps1"; &"./install-analyzer.ps1"; & rm "install-analyzer.ps1"
    ```
 2. Restart PowerShell and run `analyzer.exe`
 

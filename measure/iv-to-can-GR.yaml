@@ -83,6 +83,10 @@ measurements:
             value: !!float 1e-9
             message: Current leakage is too high. Check if there is a light exposure.
             abs: true
+        voltage_input[0]:
+          max:
+            value: !!float 0
+            message: "This validation always fails so you can preview values before saving"
       measurements_kwargs:
         int_time: SHORT
 
@@ -131,6 +135,10 @@ measurements:
             value: !!float 5e-3
             message: Current leakage is too low. Check if there is a good contact.
             abs: true
+        voltage_input[0]:
+          max:
+            value: !!float 0
+            message: "This validation always fails so you can preview values before saving"
       measurements_kwargs:
         int_time: MED
 

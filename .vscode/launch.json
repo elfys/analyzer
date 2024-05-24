@@ -62,7 +62,7 @@
             "name": "help",
             "type": "python",
             "request": "launch",
-            "program": "analyzer.py",
+            "module": "analyzer",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["summary", "--help"]

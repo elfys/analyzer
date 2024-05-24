@@ -152,6 +152,21 @@ class MatrixChip(SimpleChip):
         index=True,
     )
     matrix: Mapped["Matrix"] = relationship(back_populates="chips")  # noqa: F821
+    
+    @property
+    def x_coordinate(self):
+        digits = re.sub(rf'^{self.type}', '', self.name)[:4]
+        if not digits.isdigit() or len(digits) != 4:
+            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
+        return int(digits[0:2])
+    
+    @property
+    def y_coordinate(self):
+        digits = re.sub(rf'^{self.type}', '', self.name)[:4]
+        if not digits.isdigit() or len(digits) != 4:
+            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
+        return int(digits[2:4])
+    
 
 
 class EqeChip(SimpleChip):

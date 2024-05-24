@@ -18,7 +18,7 @@
    `cd analyzer`
 4. Install proper python version
    ```shell
-   pyenv update
+   pyenv update # brew upgrade pyenv
    pyenv install $(cat .python-version)
    ```
 5. Install pipenv

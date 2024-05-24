@@ -166,7 +166,6 @@ class MatrixChip(SimpleChip):
         if not digits.isdigit() or len(digits) != 4:
             raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
         return int(digits[2:4])
-    
 
 
 class EqeChip(SimpleChip):

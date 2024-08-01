@@ -75,7 +75,7 @@ setups:
   - name: 10v points
     instrument:
       - "reset()" # resets commands to their default settings
-      - "vlist = {-10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2}" # sets the voltage list
+      - "vlist = {-10, -8, -5, -4, -2, 0, 1, 2}" # sets the voltage list positive for new SM
       - "points = table.getn(vlist)" # counts the point
 
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function

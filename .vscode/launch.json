@@ -83,13 +83,21 @@
             "module": "measure",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["-c", ".\\measure\\iv-matrix.yaml", "iv", "-w", "Test", "-s", "1", "-n", "X0101"]
+            "args": ["--log-level", "debug", "-c", ".\\measure\\iv-matrix.yaml", "iv", "--auto", "-w", "TEST", "-s", "1", "-n", "X0101"]
         },
         {
             "name": "Measure matrix",
             "type": "python",
             "request": "launch",
             "program": "measure\\matrix.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Measure quadrant",
+            "type": "python",
+            "request": "launch",
+            "program": "measure\\hammis.py",
             "console": "integratedTerminal",
             "justMyCode": false
         }

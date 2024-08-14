@@ -44,12 +44,7 @@ def execute_command(
     try:
         return command_types[command_type](command)
     except pyvisa.VisaIOError as e:
-        advice = ""
-        if e.error_code == VI_ERROR_TMO:
-            advice = ("\nTry to increase `kwargs.timeout`, `smub.measure.delay` or "
-                      "`trigger.timer[1].delay` in the config file.")
-        
-        raise RuntimeError(f"PyVisaError: {e}{advice}")
+        instrument.handle_error(e)
 
 
 @from_config("measure")

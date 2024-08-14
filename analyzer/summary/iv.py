@@ -181,12 +181,13 @@ def get_iv_measurements(conditions: list[IvConditions]) -> list[IVMeasurement]:
     def get_sort_keys(condition: IvConditions):
         voltages = [m.voltage_input for m in condition.measurements]
         voltage_amplitude = max(voltages) - min(voltages)
-        return voltage_amplitude, condition.datetime
+        return condition.datetime, -voltage_amplitude
     
     non_empty_conditions = [c for c in conditions if c.measurements]
-    sorted_conditions = sorted(non_empty_conditions, key=get_sort_keys, reverse=True)
+    sorted_conditions = list(sorted(non_empty_conditions, key=get_sort_keys, reverse=False))
     
     # get all measurements, deduplicated by voltage and chip name
+    # latest measurements from `sorted_conditions` will be selected
     measurements = (
         (m.voltage_input, c.chip_id, m) for c in sorted_conditions for m in c.measurements)
     measurements_dict = {(v, c): m for v, c, m in measurements}

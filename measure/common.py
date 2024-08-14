@@ -117,15 +117,18 @@ def do_validation(measurements: dict[str, list], rules: dict) -> Optional[str]:
 def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: Sequence[str]):
     configs = ctx.find_object(MeasureContext).configs
     chip_names = [name.upper() for name in chip_names]
-    base_error_msg = f"{param.opts[0]} parameter is invalid. %s"
+    expected_chips_number = 1 if "matrix" in configs else len(configs["chips"])
+    if len(chip_names) == 0:
+        answer = click.prompt(f"Enter {expected_chips_number} chip name(s) separated by space", type=str)
+        chip_names = [name.upper() for name in answer.split()]
     
     if "matrix" in configs:
         if len(chip_names) != 1:
             raise click.BadParameter("Matrix measurement requires exactly one chip name")
     else:
+        base_error_msg = f"{param.opts[0]} parameter is invalid. %s"
         if len(set(chip_names)) != len(chip_names):
             raise click.BadParameter(base_error_msg % "Chip names must be unique.")
-        expected_chips_number = len(configs["chips"])
         if len(chip_names) != expected_chips_number:
             raise click.BadParameter(base_error_msg % f"{expected_chips_number} chip names expected, based on provided config file.")
     

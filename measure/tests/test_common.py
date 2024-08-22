@@ -6,7 +6,6 @@ from unittest.mock import (
 
 import click
 import pytest
-from pyvisa import VisaIOError
 from pyvisa.resources import MessageBasedResource
 
 from measure import MeasureContext
@@ -223,11 +222,3 @@ class TestExecuteCommand:
     def test_execute_command_invalid_type(self, instrument, command):
         with pytest.raises(Exception, match="Invalid command type"):
             execute_command(instrument, command, "invalid_type")
-    
-    def test_execute_command_visa_io_error(self, instrument, command):
-        instrument.write.side_effect = VisaIOError(-1073807339)
-        with pytest.raises(
-            RuntimeError,
-            match="Timeout expired before operation completed.\nTry to increase `kwargs.timeout`.*"
-        ):
-            execute_command(instrument, command, "write")

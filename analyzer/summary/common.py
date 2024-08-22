@@ -23,10 +23,12 @@ from matplotlib.axes import Axes
 from matplotlib.colors import (
     Colormap,
     ListedColormap,
+    Normalize,
 )
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator
+from openpyxl.cell import Cell
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Fill
 from openpyxl.worksheet.worksheet import Worksheet
@@ -65,12 +67,23 @@ def get_slice_by_voltages(
     return slice_df
 
 
+def get_voltage_column_cell(header_row: tuple[Cell, ...], v: Decimal) -> Cell:
+    for cell in header_row:
+        try:
+            if Decimal(cast(str, cell.value)) == v:
+                return cell
+        except (ValueError, TypeError, decimal.DecimalException):
+            pass
+    raise StopIteration
+
+
 def apply_conditional_formatting(
     sheet: Worksheet,
     rules: Mapping[str, Fill],
     thresholds: Mapping[str, Mapping[Decimal, float]],
 ):
     chip_row_index = [(i + 1, cell.value) for i, cell in enumerate(sheet["A"]) if cell.value]
+    header_row: tuple[Cell, ...] = sheet["1"]
     
     for chip_type, chip_type_thresholds in thresholds.items():
         def is_current_type(chip_name: str) -> bool:
@@ -78,15 +91,7 @@ def apply_conditional_formatting(
         
         for voltage, threshold in chip_type_thresholds.items():
             try:
-                for cell in sheet["1"]:
-                    try:
-                        if Decimal(cell.value) == voltage:
-                            column_cell = cell
-                            break
-                    except (ValueError, TypeError, decimal.DecimalException):
-                        pass
-                else:
-                    raise StopIteration
+                column_cell = get_voltage_column_cell(header_row, voltage)
                 first_row_index = next(i for i, v in chip_row_index if is_current_type(v))
                 last_row_index = next(i for i, v in reversed(chip_row_index) if is_current_type(v))
             except (ValueError, StopIteration):
@@ -250,8 +255,8 @@ def plot_data(
                 # increase upper bound so the highest level does not look white on hot cmap
                 upper_bound += (upper_bound - lower_bound) * 0.2
                 
-                norm = plt.Normalize(vmin=lower_bound, vmax=upper_bound)
-                cmap: Colormap = plt.cm.hot
+                norm = Normalize(vmin=lower_bound, vmax=upper_bound)
+                cmap: Colormap = plt.get_cmap('hot')
                 colors = cmap(norm(clipped_data))
                 plot_map(map_ax, colors, xs, ys, widths, heights, cmap)
                 ax.figure.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax)

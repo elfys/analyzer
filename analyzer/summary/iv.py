@@ -7,6 +7,7 @@ from typing import (
     Iterable,
     Sequence,
     TypedDict,
+    cast,
 )
 
 import click
@@ -152,7 +153,7 @@ def summary_iv(
     matrix_chips = [chip for chip in chips if isinstance(chip, MatrixChip)]
     if matrix_chips:
         # fetch matrices to avoid multiple queries later
-        matrices = ctx.session.query(Matrix) \
+        ctx.session.query(Matrix) \
             .filter(Matrix.id.in_([c.matrix_id for c in matrix_chips])) \
             .all()
     
@@ -214,7 +215,8 @@ def save_iv_summary_to_excel(
 ):
     summary_df = get_slice_by_voltages(sheets_data["anode"], voltages)
     summary_df.insert(
-        0, "Temperature", sheets_data["temperatures"]["Temperature"].apply(lambda x: f"{x:.2f}"))
+        0, "Temperature",
+        cast(pd.Series, sheets_data["temperatures"]["Temperature"].apply(lambda x: f"{x:.2f}")))
     rules = {
         "lessThan": PatternFill(bgColor="ee9090", fill_type="solid"),  # red, failed
         "greaterThanOrEqual": PatternFill(bgColor="90ee90", fill_type="solid"),  # green, ok
@@ -234,7 +236,7 @@ def save_iv_summary_to_excel(
             rules,
             thresholds,
         )
-        for df_name, df in sheets_data.items():
+        for df_name, df in cast(Iterable[tuple[str, pd.DataFrame]], sheets_data.items()):
             if (sheet_name := sheet_names[df_name]) is None:
                 continue
             df = df.dropna(axis=1, how="all")
@@ -253,9 +255,11 @@ def get_sheets_iv_data(
     chips: Iterable[Chip],
 ) -> SheetsIVData[pd.DataFrame]:
     chip_names = sorted({c.name for c in chips})
+    chip_index = pd.Index(chip_names)
     temps_df = pd.DataFrame(
-        0, dtype="float32", index=chip_names, columns=['Temperature', 'num_of_measurements'])
-    empty_df = pd.DataFrame(dtype="float32", index=chip_names)
+        0, dtype="float32", index=chip_index,
+        columns=pd.Index(['Temperature', 'num_of_measurements']))
+    empty_df = pd.DataFrame(dtype="float32", index=chip_index)
     anode_df = empty_df.copy()
     raw_anode_df = empty_df.copy()
     cathode_df = empty_df.copy()

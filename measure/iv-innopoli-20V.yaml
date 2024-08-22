@@ -76,14 +76,14 @@ setups:
     instrument:
       - "reset()" # resets commands to their default settings
 #      - "vlist = {-10, -8, -5, -4, -2, 0, 1, 2}" # sets the voltage list positive for new SM
-      - "vlist = {-20, -15, -10, -5, -1, 0, 1, 2}" # Voltage list for PD
+      - "vlist = {-20, -15, -10, -5, -1, 1, 2}" # Voltage list for PD
       - "points = table.getn(vlist)" # counts the point
 
       - "smua.source.func = smua.OUTPUT_DCVOLTS" # selects the voltage source function
       - "smua.source.autorangev = smua.AUTORANGE_ON" # enables voltage source autorange
       - "smua.source.autorangei = smua.AUTORANGE_ON" # enables current source autorange (delete?)
       - "smua.source.output = smua.OUTPUT_ON" # turn on the output in preparation for the sweep
-      #- "smua.source.limiti = 10e-3" # comlience limit
+      - "smua.source.limiti = 100e-3" # comlience limit
       - "smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "smua.measure.autozero = smua.AUTOZERO_OFF" # disables automatic updates to the internal reference measurements of the instrument
       - "smua.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging

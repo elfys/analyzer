@@ -44,3 +44,7 @@ class IVMeasurement(Base):
         if self.anode_current_corrected is not None:
             return self.anode_current_corrected
         return self.anode_current
+    
+    @property
+    def datetime(self):
+        return self.conditions.datetime

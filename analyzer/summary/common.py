@@ -1,3 +1,4 @@
+import decimal
 from decimal import Decimal
 from time import (
     localtime,
@@ -14,11 +15,17 @@ from typing import (
 )
 
 import click
+import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.colors import (
+    Colormap,
+    ListedColormap,
+)
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Fill
@@ -32,7 +39,6 @@ from orm import (
     CVMeasurement,
     ChipState,
     IVMeasurement,
-    IvConditions,
     Wafer,
 )
 
@@ -72,13 +78,15 @@ def apply_conditional_formatting(
         
         for voltage, threshold in chip_type_thresholds.items():
             try:
-                column_cell = next(
-                    (
-                        cell
-                        for cell in sheet["1"]
-                        if cell.value is not None and Decimal(str(cell.value)) == voltage
-                    )
-                )
+                for cell in sheet["1"]:
+                    try:
+                        if Decimal(cell.value) == voltage:
+                            column_cell = cell
+                            break
+                    except (ValueError, TypeError, decimal.DecimalException):
+                        pass
+                else:
+                    raise StopIteration
                 first_row_index = next(i for i, v in chip_row_index if is_current_type(v))
                 last_row_index = next(i for i, v in reversed(chip_row_index) if is_current_type(v))
             except (ValueError, StopIteration):
@@ -94,21 +102,22 @@ def apply_conditional_formatting(
 def get_info(
     wafer: Wafer,
     chip_states: Iterable[ChipState],
-    measurements: list[IvConditions] | list[CVMeasurement],
+    measurements: list[IVMeasurement] | list[CVMeasurement],
 ) -> pd.Series:
     format_date = strftime("%A, %d %b %Y", localtime())
     chip_states_str = "; ".join([state.name for state in chip_states])
     
-    first_measurement = min(measurements, key=lambda m: m.datetime)
-    last_measurement = max(measurements, key=lambda m: m.datetime)
+    first_measurement_date = min(map(lambda m: m.datetime, measurements))
+    last_measurement_date = max(map(lambda m: m.datetime, measurements))
     
     return pd.Series(
         {
             "Wafer": wafer.name,
             "Summary generation date": format_date,
             "Chip state": chip_states_str,
-            "First measurement date": first_measurement.datetime,
-            "Last measurement date": last_measurement.datetime,
+            "First measurement date": first_measurement_date,
+            "Last measurement date": last_measurement_date,
+            "Number of measurements": len(measurements),
         }
     )
 
@@ -118,27 +127,41 @@ def plot_hist(ax: Axes, data: np.ndarray):
     ax.hist(data * 1e12, bins=15)
 
 
-def plot_heat_map(ax: Axes, values: np.ndarray, xs: np.ndarray, ys: np.ndarray, vmin, vmax):
-    width = xs.max() - xs.min() + 1
-    height = ys.max() - ys.min() + 1
-    grid = np.full((height, width), np.nan)
-    grid[ys - ys.min(), xs - xs.min()] = values
+def plot_map(
+    ax: Axes,
+    colors: np.ndarray,
+    xs: np.ndarray,
+    ys: np.ndarray,
+    widths: np.ndarray,
+    heights: np.ndarray,
+    cmap: Colormap,
+):
+    for x, y, w, h, v in zip(xs, ys, widths, heights, colors):
+        rect = Rectangle(
+            (x, y), w, h,
+            linewidth=0.5,
+            edgecolor=(0, 0, 0, 0.5),
+            facecolor=cmap(v)
+        )
+        ax.add_patch(rect)
     
-    X = np.linspace(min(xs) - 0.5, max(xs) + 0.5, width + 1)
-    Y = np.linspace(min(ys) - 0.5, max(ys) + 0.5, height + 1)
-    mesh = ax.pcolormesh(X, Y, grid, cmap="hot", shading="flat", vmin=vmin, vmax=vmax)
+    ax.set_xlim(xs.min() - 0.5, (xs + widths).max() + 0.5)
+    ax.set_ylim(ys.min() - 0.5, (ys + heights).max() + 0.5)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=0))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=0))
     ax.set_ylabel("Y coordinate")
     ax.set_xlabel("X coordinate")
-    ax.figure.colorbar(mesh, ax=ax)
+    ax.invert_yaxis()
 
 
 def get_iv_plot_data(measurements: Collection[IVMeasurement]):
     data = np.array([value.get_anode_current_value() for value in measurements])
-    xs = np.array([measurement.conditions.chip.x_coordinate for measurement in measurements])
-    ys = np.array([measurement.conditions.chip.y_coordinate for measurement in measurements])
-    return data, xs, ys
+    chips = [measurement.conditions.chip for measurement in measurements]
+    xs = np.array([chip.x_coordinate for chip in chips])
+    ys = np.array([chip.y_coordinate for chip in chips])
+    widths = np.array([chip.width for chip in chips])
+    heights = np.array([chip.height for chip in chips])
+    return data, xs, ys, widths, heights
 
 
 def get_cv_plot_data(measurements: Collection[CVMeasurement]):
@@ -181,19 +204,24 @@ def plot_data(
     )
     axes = axes.reshape(-1, cols_num)
     
-    with click.progressbar(tuple(enumerate(sorted(voltages))), label="Plotting...") as progress:
-        for i, voltage in progress:
+    with click.progressbar(
+        zip(axes, sorted(voltages), strict=True), label="Plotting...", length=len(voltages)
+    ) as progress:
+        for v_axes, voltage in progress:
             target_values = [value for value in values if value.voltage_input == voltage]
             if len(target_values) == 0:
                 continue
             if is_iv_measurements(target_values):
-                data, xs, ys = get_iv_plot_data(target_values)
+                data, xs, ys, widths, heights = get_iv_plot_data(target_values)
+                hist_xlabel = 'Anode current [pA]'
             elif is_cv_measurements(target_values):
                 data, xs, ys = get_cv_plot_data(target_values)
+                hist_xlabel = 'Capacitance [pF]'
             else:
                 raise RuntimeError("Unknown object type was provided")
             
-            axes[i][0].set_title(f"{voltage}V")
+            for ax in v_axes:
+                ax.set_title(f"{voltage}V")
             
             if failure_map:
                 if voltage not in thresholds:
@@ -201,14 +229,31 @@ def plot_data(
                         f"Thresholds for {voltage}V are not found. Skipping."
                     )
                     continue
-                clipped_data = data > thresholds[voltage]
-                lower_bound, upper_bound = -1, 1.2
-                plot_heat_map(axes[i][0], clipped_data, xs, ys, lower_bound, upper_bound)
+                
+                map_ax = v_axes[0]
+                colors = (data > thresholds[voltage]).astype(np.float32)
+                cmap = ListedColormap(["#ff3030", "#30ff30"], "red_green")
+                plot_map(map_ax, colors, xs, ys, widths, heights, cmap)
+                map_ax.legend(
+                    handles=[
+                        mpatches.Patch(color=cmap(0), label="Failure"),
+                        mpatches.Patch(color=cmap(1), label="Success"),
+                    ],
+                    loc="best",
+                )
             else:
-                axes[i][1].set_title(f"{voltage}V")
+                hist_ax, map_ax = v_axes
                 lower_bound, upper_bound = np.quantile(data, quantile)
                 clipped_data = np.clip(data, lower_bound, upper_bound)
-                plot_hist(axes[i][0], clipped_data)
+                plot_hist(hist_ax, clipped_data)
+                hist_ax.set_xlabel(hist_xlabel)
+                # increase upper bound so the highest level does not look white on hot cmap
                 upper_bound += (upper_bound - lower_bound) * 0.2
-                plot_heat_map(axes[i][1], clipped_data, xs, ys, lower_bound, upper_bound)
+                
+                norm = plt.Normalize(vmin=lower_bound, vmax=upper_bound)
+                cmap: Colormap = plt.cm.hot
+                colors = cmap(norm(clipped_data))
+                plot_map(map_ax, colors, xs, ys, widths, heights, cmap)
+                ax.figure.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax)
+    
     return fig, axes

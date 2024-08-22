@@ -10,6 +10,7 @@ from typing import (
 )
 
 import click
+import numpy as np
 import pandas as pd
 from openpyxl.styles import PatternFill
 from sqlalchemy.orm import (
@@ -24,6 +25,8 @@ from orm import (
     ChipState,
     IVMeasurement,
     IvConditions,
+    Matrix,
+    MatrixChip,
     Wafer,
 )
 from utils import (
@@ -47,10 +50,12 @@ from ..context import (
 )
 
 
-class SheetsIVData(TypedDict):
-    anode: pd.DataFrame
-    cathode: pd.DataFrame
-    guard_ring: pd.DataFrame
+class SheetsIVData[T](TypedDict):
+    anode: T
+    cathode: T
+    guard_ring: T
+    anode_raw: T
+    temperatures: T
 
 
 @click.command(name="iv", help="Make summary (png and xlsx) for IV measurements' data.")
@@ -133,15 +138,23 @@ def summary_iv(
         ctx.logger.warning("No measurements found.")
         return
     
+    chips = {c.chip for c in conditions}
     measurements = get_iv_measurements(conditions)
-    sheets_data = get_sheets_iv_data(measurements)
+    sheets_data = get_sheets_iv_data(measurements, chips)
     
-    voltages = list(sheets_data["anode"].columns.intersection(
+    summary_voltages = list(sheets_data["anode"].columns.intersection(
         [Decimal(v) for v in {"-1", "0.01", "5", "6", "10", "20"}]
     ))
     thresholds = get_thresholds(ctx.session, "IV")
     
-    chips_types = {chips_type} if chips_type else {condition.chip.type for condition in conditions}
+    chips_types = {chips_type} if chips_type else {chip.type for chip in chips}
+    
+    matrix_chips = [chip for chip in chips if isinstance(chip, MatrixChip)]
+    if matrix_chips:
+        # fetch matrices to avoid multiple queries later
+        matrices = ctx.session.query(Matrix) \
+            .filter(Matrix.id.in_([c.matrix_id for c in matrix_chips])) \
+            .all()
     
     title = f"{wafer.name} {','.join(chips_types)}"
     file_name = get_indexed_filename(f"Summary-IV-{title.replace(' ', '-')}", ("png", "xlsx"))
@@ -154,21 +167,19 @@ def summary_iv(
         chips_type = next(iter(chips_types))
         fig, axes = plot_data(
             measurements,
-            voltages,
+            summary_voltages,
             quantile,
             thresholds.get(chips_type, {}),
         )
         fig.suptitle(title, fontsize=14)
-        for ax_row in axes:
-            ax_row[0].set_xlabel("Anode current [pA]")
         
         png_file_name = f"{file_name}.png"
         fig.savefig(png_file_name, dpi=300)
         ctx.logger.info(f"Summary data is plotted to {png_file_name}")
     
     exel_file_name = f"{file_name}.xlsx"
-    info = get_info(wafer=wafer, chip_states=chip_states, measurements=conditions)
-    save_iv_summary_to_excel(sheets_data, info, exel_file_name, voltages, thresholds)
+    info = get_info(wafer=wafer, chip_states=chip_states, measurements=measurements)
+    save_iv_summary_to_excel(sheets_data, info, exel_file_name, summary_voltages, thresholds)
     
     ctx.logger.info(f"Summary data is saved to {exel_file_name}")
 
@@ -195,34 +206,43 @@ def get_iv_measurements(conditions: list[IvConditions]) -> list[IVMeasurement]:
 
 
 def save_iv_summary_to_excel(
-    sheets_data: SheetsIVData,
+    sheets_data: SheetsIVData[pd.DataFrame],
     info: pd.Series,
     file_name: str,
     voltages: Iterable[Decimal],
     thresholds: dict[str, dict[Decimal, float]],
 ):
     summary_df = get_slice_by_voltages(sheets_data["anode"], voltages)
+    summary_df.insert(
+        0, "Temperature", sheets_data["temperatures"]["Temperature"].apply(lambda x: f"{x:.2f}"))
     rules = {
-        "lessThan": PatternFill(bgColor="ee9090", fill_type="solid"),
-        "greaterThanOrEqual": PatternFill(bgColor="90ee90", fill_type="solid"),
+        "lessThan": PatternFill(bgColor="ee9090", fill_type="solid"),  # red, failed
+        "greaterThanOrEqual": PatternFill(bgColor="90ee90", fill_type="solid"),  # green, ok
+    }
+    sheet_names: SheetsIVData[str | None] = {
+        'anode': "I1 anode",
+        'cathode': "I3 anode",
+        'guard_ring': "Guard ring current",
+        'anode_raw': "I1 anode raw",
+        'temperatures': None,
     }
     
     with pd.ExcelWriter(file_name) as writer:
-        summary_df.rename(columns=float).to_excel(writer, sheet_name="Summary")
+        summary_df.to_excel(writer, sheet_name="Summary")
         apply_conditional_formatting(
             writer.book["Summary"],
             rules,
             thresholds,
         )
-        I1_anode_df = sheets_data["anode"].dropna(axis=1, how="all").rename(columns=float)
-        if not I1_anode_df.empty:
-            I1_anode_df.to_excel(writer, sheet_name="I1 anode")
-        I3_anode_df = sheets_data["cathode"].dropna(axis=1, how="all").rename(columns=float)
-        if not I3_anode_df.empty:
-            I3_anode_df.to_excel(writer, sheet_name="I3 anode")
-        guard_ring_df = sheets_data["guard_ring"].dropna(axis=1, how="all").rename(columns=float)
-        if not guard_ring_df.empty:
-            guard_ring_df.to_excel(writer, sheet_name="Guard ring current")
+        for df_name, df in sheets_data.items():
+            if (sheet_name := sheet_names[df_name]) is None:
+                continue
+            df = df.dropna(axis=1, how="all")
+            if df.empty:
+                continue
+            df = df.rename(columns=float)
+            df.to_excel(writer, sheet_name=sheet_name)
+        
         info.to_excel(writer, sheet_name="Info")
 
 
@@ -230,26 +250,39 @@ def save_iv_summary_to_excel(
 def get_sheets_iv_data(
     ctx: AnalyzerContext,
     measurements: Iterable[IVMeasurement],
-) -> SheetsIVData:
-    anode_df = pd.DataFrame(dtype="float64")
-    cathode_df = pd.DataFrame(dtype="float64")
-    guard_ring_df = pd.DataFrame(dtype="float64")
+    chips: Iterable[Chip],
+) -> SheetsIVData[pd.DataFrame]:
+    chip_names = sorted({c.name for c in chips})
+    temps_df = pd.DataFrame(
+        0, dtype="float32", index=chip_names, columns=['Temperature', 'num_of_measurements'])
+    empty_df = pd.DataFrame(dtype="float32", index=chip_names)
+    anode_df = empty_df.copy()
+    raw_anode_df = empty_df.copy()
+    cathode_df = empty_df.copy()
+    guard_ring_df = empty_df.copy()
     has_uncorrected_current = False
     with click.progressbar(measurements, label="Processing measurements...") as progress:
         for measurement in progress:
-            measurement: IVMeasurement
             cell_location = (measurement.conditions.chip.name, measurement.voltage_input)
             if measurement.anode_current_corrected is None:
                 has_uncorrected_current = True
             anode_df.loc[cell_location] = measurement.get_anode_current_value()
+            raw_anode_df.loc[cell_location] = measurement.anode_current
             cathode_df.loc[cell_location] = measurement.cathode_current
             guard_ring_df.loc[cell_location] = measurement.guard_current
+            
+            temps_df.loc[cell_location[0], ['Temperature', 'num_of_measurements']] += \
+                np.array([measurement.conditions.temperature, 1.0], dtype=np.float32)
     if has_uncorrected_current:
         ctx.logger.warning(
             "Some current measurements are not corrected by temperature."
         )
+    temps_df['Temperature'] /= temps_df['num_of_measurements']
+    temps_df.drop(columns='num_of_measurements', inplace=True)
     return {
         "anode": anode_df,
+        "anode_raw": raw_anode_df,
         "cathode": cathode_df,
         "guard_ring": guard_ring_df,
+        "temperatures": temps_df,
     }

@@ -108,14 +108,22 @@ class SimpleChip(Chip):  # all chips with size, have IV and CV measurements
         digits = re.sub(rf'^{self.type}', '', self.name)
         if not digits.isdigit() or len(digits) != 4:
             raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
-        return int(digits[0:2])
+        return int(digits[2:])
     
     @property
     def y_coordinate(self):
         digits = re.sub(rf'^{self.type}', '', self.name)
         if not digits.isdigit() or len(digits) != 4:
             raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
-        return int(digits[2:4])
+        return int(digits[:2])
+    
+    @property
+    def width(self):
+        return 1
+    
+    @property
+    def height(self):
+        return 1
     
     @classmethod
     def get_area(cls) -> float:
@@ -141,10 +149,14 @@ class TestStructureChip(Chip):
 
 
 class MatrixChip(SimpleChip):
+    xcoord_re = re.compile(r'^\d\d(?P<matrix>\d\d)_\d(?P<px>\d)$')
+    ycoord_re = re.compile(r'^(?P<matrix>\d\d)\d\d_(?P<px>\d)\d$')
+    
     __mapper_args__ = {"polymorphic_abstract": True}
     chip_sizes = {
         "Q": (.448, .540),  # one pixel out of 9
         "R": (.830, .665),  # one pixel out of 9
+        "W": (6.9, 6.9),  # one of 4 segments of a circle
     }
     
     matrix_id: Mapped[int | None] = mapped_column(
@@ -152,6 +164,29 @@ class MatrixChip(SimpleChip):
         index=True,
     )
     matrix: Mapped["Matrix"] = relationship(back_populates="chips")  # noqa: F821
+    
+    @property
+    def x_coordinate(self):
+        coords = re.sub(rf'^{self.type}', '', self.name)
+        match = self.xcoord_re.match(coords)
+        
+        # get matrix coordinate * (matrix.width + 1) + 2nd index * chip_size[0]
+        return int(match.group('matrix')) + int(match.group('px')) / (self.matrix.width + 1)
+    
+    @property
+    def width(self):
+        return 1 / self.matrix.width
+    
+    @property
+    def y_coordinate(self):
+        coords = re.sub(rf'^{self.type}', '', self.name)
+        match = self.ycoord_re.match(coords)
+        
+        return int(match.group('matrix')) + int(match.group('px')) / (self.matrix.height + 1)
+    
+    @property
+    def height(self):
+        return 1 / self.matrix.height
 
 
 class EqeChip(SimpleChip):

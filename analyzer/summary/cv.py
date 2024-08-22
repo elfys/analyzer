@@ -145,8 +145,6 @@ def summary_cv(
         chips_type = next(iter(chips_types))
         fig, axes = plot_data(measurements, voltages, quantile, thresholds.get(chips_type, {}))
         fig.suptitle(wafer.name, fontsize=14)
-        for ax_row in axes:
-            ax_row[0].set_xlabel("Capacitance [pF]")
         
         png_file_name = f"{file_name}.png"
         

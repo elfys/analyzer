@@ -41,7 +41,7 @@ class TestSimpleChip:
     
     def test_x_coordinate_with_valid_chip_name(self):
         chip = AChip(name="A1234")
-        assert chip.x_coordinate == 12
+        assert chip.x_coordinate == 34
     
     def test_x_coordinate_with_invalid_chip_name(self):
         chip = AChip(name="A12")
@@ -50,7 +50,7 @@ class TestSimpleChip:
     
     def test_y_coordinate_with_valid_chip_name(self):
         chip = AChip(name="A1234")
-        assert chip.y_coordinate == 34
+        assert chip.y_coordinate == 12
     
     def test_y_coordinate_with_invalid_chip_name(self):
         chip = AChip(name="A12")

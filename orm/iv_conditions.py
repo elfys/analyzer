@@ -51,7 +51,7 @@ class IvConditions(Base):
         server_default=func.current_timestamp(),
         deferred_group="full",
     )
-    temperature: Mapped[Optional[float]] = mapped_column(deferred_group="full")
+    temperature: Mapped[Optional[float]] = mapped_column()
     int_time: Mapped[Optional[str]] = mapped_column(VARCHAR(length=20), deferred_group="full")
     instrument_id: Mapped[int] = mapped_column(
         ForeignKey(

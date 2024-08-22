@@ -257,7 +257,7 @@ def plot_data(
                 
                 norm = Normalize(vmin=lower_bound, vmax=upper_bound)
                 cmap: Colormap = plt.get_cmap('hot')
-                colors = cmap(norm(clipped_data))
+                colors = norm(clipped_data)
                 plot_map(map_ax, colors, xs, ys, widths, heights, cmap)
                 ax.figure.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax)
     

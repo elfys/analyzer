@@ -64,16 +64,17 @@ class PyVisaInstrument:
             except Exception as e:
                 self.logger.error(f"Error checking {self} error queue: {e}")
         # TODO: check errors for other instruments
-
+    
     def handle_error(self, e: pyvisa.VisaIOError):
         advice = ""
         if e.error_code == VI_ERROR_TMO:
-                advice = ("\nTry to increase `kwargs.timeout`, `smub.measure.delay` or "
-                          "`trigger.timer[1].delay` in the yaml config file.")
+            advice = ("\nTry to increase `kwargs.timeout`, `smub.measure.delay` or "
+                      "`trigger.timer[1].delay` in the yaml config file.")
         elif e.error_code == VI_ERROR_NLISTENERS:
             advice = ("\nCheck if the instrument is connected and powered on. "
                       "If the problem persists, try to restart or reconnect the instrument.")
         raise RuntimeError(f"PyVisaError: {e}{advice}")
+
 
 class TemperatureInstrument:
     def __init__(self, sensor_id, simulate=False):

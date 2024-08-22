@@ -7,6 +7,7 @@ from unittest.mock import (
 import pytest
 from pyvisa import (
     ResourceManager,
+    VisaIOError,
 )
 from pyvisa.resources import MessageBasedResource
 
@@ -93,3 +94,20 @@ class TestPyVisaInstrument:
         instrument.resource.query.assert_called_with("print(errorqueue.count)")
         assert "could not convert string to float" in log_handler.records[0].message
         assert "could not convert string to float" in log_handler.records[1].message
+
+    def test_execute_command_visa_timeout_error(self, instrument):
+        error = VisaIOError(-1073807339)
+        with pytest.raises(
+            RuntimeError,
+            match="Timeout expired before operation completed.\nTry to increase `kwargs.timeout`.*"
+        ):
+            instrument.handle_error(error)
+            
+    def test_execute_command_visa_listeners_error(self, instrument):
+        error = VisaIOError(-1073807265)
+        with pytest.raises(
+            RuntimeError,
+            match="No listeners condition is detected.*\nCheck if the instrument is connected.*"
+        ):
+            instrument.handle_error(error)
+            

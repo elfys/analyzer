@@ -5,10 +5,9 @@ from typing import (
 )
 
 import click
-import pyvisa
 import pandas as pd
+import pyvisa
 from jsonpath_ng import parse
-from pyvisa.constants import VI_ERROR_TMO
 
 from .context import (
     MeasureContext,
@@ -55,7 +54,12 @@ def get_raw_measurements(ctx: MeasureContext, commands: list[dict]) -> dict[str,
     for command in commands:
         value = execute_command(instrument, command["command"], command["type"])
         if "name" in command:
-            measurements[command["name"]] = value
+            if isinstance(value, list):
+                measurements[command["name"]] = value
+            else:
+                raise click.BadParameter(
+                    f"Invalid output for command {command['type']}:{command['command']}: {repr(value)}."
+                    f"A list of values was expected.")
     return measurements
 
 
@@ -114,7 +118,8 @@ def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: 
     chip_names = [name.upper() for name in chip_names]
     expected_chips_number = 1 if "matrix" in configs else len(configs["chips"])
     if len(chip_names) == 0:
-        answer = click.prompt(f"Enter {expected_chips_number} chip name(s) separated by space", type=str)
+        answer = click.prompt(f"Enter {expected_chips_number} chip name(s) separated by space",
+                              type=str)
         chip_names = [name.upper() for name in answer.split()]
     
     if "matrix" in configs:

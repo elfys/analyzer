@@ -135,6 +135,7 @@ def measure_setup(
 ):
     thermometer = cast(TemperatureInstrument, ctx.instruments["temperature"])
     temperature = thermometer.get_temperature()
+    ctx.logger.info(f"Temperature: {temperature}°C")
     validate_temperature(temperature, automatic)
     
     ctx.logger.info(f"Measuring {', '.join([c.name for c in chips])}")

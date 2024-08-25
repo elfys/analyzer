@@ -161,7 +161,7 @@ setups:
       - "smua.measure.nplc = 1" # integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "smua.measure.autozero = smua.AUTOZERO_ONCE" # AUTO is not allowed to combine with trigger
       - "smua.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
-      - 'smua.measure.delay = 3' # increase the delay to allow the current to stabilize
+      - 'smua.measure.delay = 2' # increase the delay to allow the current to stabilize
 
        # SMU B
       - "smub.source.func = smub.OUTPUT_DCVOLTS" # selects the voltage source function
@@ -179,7 +179,7 @@ setups:
       - "smub.measure.nplc = 1" # integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "smub.measure.autozero = smub.AUTOZERO_ONCE" # AUTO is not allowed to combine with trigger
       - "smub.measure.lowrangei=1e-9" # sets the lowest measurement range that is used when the instruments is autoranging
-      - 'smub.measure.delay = 3' # increase the delay to 5s to allow the current to stabilize
+      - 'smub.measure.delay = 2' # increase the delay to 5s to allow the current to stabilize
 
     program:
       condition_kwargs:

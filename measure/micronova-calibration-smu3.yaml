@@ -44,7 +44,8 @@ setups:
       - ":PAGE:CHAN:SMU3:MODE V"
       - ":PAGE:CHAN:SMU4:MODE V"
 
-      
+      - ":PAGE:CHAN:SMU1:FUNC CONS" 
+      - ":PAGE:CHAN:SMU2:FUNC CONS" 
       - ":PAGE:CHAN:SMU3:FUNC VAR1"
       - ":PAGE:CHAN:SMU4:FUNC CONS" 
 
@@ -61,12 +62,12 @@ setups:
       #      - ":PAGE:MEAS:HTIM 0"  # sets the HOLD TIME of sweep measurement
       #      - ":PAGE:MEAS:DEL 0"  # sets the DELAY TIME of SMU.
 
-      - ":PAGE:MEAS:CONS:SMU3 0" 
+      #- ":PAGE:MEAS:CONS:SMU3 0" 
       - ":PAGE:MEAS:CONS:SMU4 0"  # sets the constant SOURCE value of SMU3 for sweep measurements
 
       # Integration time
       - ":PAGE:MEAS:MSET:ITIM SHORT"
-      - ":PAGE:MEAS:CONS:SMU3:COMP 0.1"
+      #- ":PAGE:MEAS:CONS:SMU3:COMP 0.1"
       - ":PAGE:MEAS:CONS:SMU4:COMP 0.1"
 
 
@@ -96,6 +97,8 @@ setups:
       - "*RST" # performs an instrument reset
       - ":PAGE:CHAN:SMU3:MODE V"
       - ":PAGE:CHAN:SMU4:MODE V"
+      - ":PAGE:CHAN:SMU1:FUNC CONS"
+      - ":PAGE:CHAN:SMU2:FUNC CONS"
       - ":PAGE:CHAN:SMU3:FUNC VAR1" 
       - ":PAGE:CHAN:SMU4:FUNC CONS"
       - ":PAGE:CHAN:MODE SWEEP"  # sets the sweep measurement mode
@@ -104,8 +107,7 @@ setups:
       - ":PAGE:MEAS:VAR1:SPAC LIN"  # selects the sweep type of VAR1 as linear staircase
       - ":PAGE:MEAS:VAR1:START 100"  # sets the sweep START value of VAR1.
       - ":PAGE:MEAS:VAR1:STEP -1"  # sets the sweep STEP value of VAR1 for the linear sweep.
-      - ":PAGE:MEAS:VAR1:STOP -2"  # sets the sweep STOP value of VAR1.
-      - ":PAGE:MEAS:VAR1:STOP 100"
+      - ":PAGE:MEAS:VAR1:STOP -100"
       - ":PAGE:MEAS:VAR1:COMP 0.01"  # sets the COMPLIANCE value of VAR1.
       - ":PAGE:MEAS:VAR1:PCOM:STATE OFF"
       #      - ":PAGE:MEAS:HTIM 0"  # sets the HOLD TIME of sweep measurement
@@ -113,9 +115,9 @@ setups:
 
       # Integration time
       - ":PAGE:MEAS:MSET:ITIM SHORT"
-      - ":PAGE:MEAS:CONS:SMU3:COMP 0.1"
+      #- ":PAGE:MEAS:CONS:SMU3:COMP 0.1"
       - ":PAGE:MEAS:CONS:SMU4:COMP 0.1"
-      - ":PAGE:MEAS:CONS:SMU3 0" 
+      #- ":PAGE:MEAS:CONS:SMU3 0" 
       - ":PAGE:MEAS:CONS:SMU4 0"  # sets the constant SOURCE value of SMU3 for sweep measurements
 
       - ":PAGE:DISP:LIST 'V3','I3','I4'"  # selects the variable names for LIST display

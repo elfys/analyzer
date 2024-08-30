@@ -21,13 +21,13 @@ measure:
   - command: "FORM:DATA ASC" # specifies the data format as ASCII
     type: "write"
   - name: voltage_input
-    command: ":DATA? 'V3'"
+    command: ":DATA? 'V1'"
     type: "query_ascii_values"
   - name: anode_current
-    command: ":DATA? 'I3'"
+    command: ":DATA? 'I1'"
     type: "query_ascii_values"
   - name: cathode_current
-    command: ":DATA? 'I4'"
+    command: ":DATA? 'I2'"
     type: "query_ascii_values"
 
 chips:
@@ -36,18 +36,18 @@ chips:
     cathode_current:
 
 setups:
-  - name: 0.01v sweep
+  - name: 0.1v sweep
     instrument:
       - "*CLS" # clears the Error Queue
       - "*RST" # performs an instrument reset
       # sets the voltage output MODE
-      - ":PAGE:CHAN:SMU3:MODE V"
-      - ":PAGE:CHAN:SMU4:MODE V"
+      - ":PAGE:CHAN:SMU1:MODE V"
+      - ":PAGE:CHAN:SMU2:MODE V"
 
-      - ":PAGE:CHAN:SMU1:FUNC CONS" 
-      - ":PAGE:CHAN:SMU2:FUNC CONS" 
-      - ":PAGE:CHAN:SMU3:FUNC VAR1"
-      - ":PAGE:CHAN:SMU4:FUNC CONS" 
+      
+      - ":PAGE:CHAN:SMU1:FUNC VAR1"
+      - ":PAGE:CHAN:SMU2:FUNC CONS"  # sets the function (FCTN) of SMU1. SMU1 - Emitter
+      - ":PAGE:CHAN:SMU3:FUNC CONS" 
 
       - ":PAGE:CHAN:MODE SWEEP"  # sets the sweep measurement mode
 
@@ -62,16 +62,14 @@ setups:
       #      - ":PAGE:MEAS:HTIM 0"  # sets the HOLD TIME of sweep measurement
       #      - ":PAGE:MEAS:DEL 0"  # sets the DELAY TIME of SMU.
 
-      #- ":PAGE:MEAS:CONS:SMU3 0" 
-      - ":PAGE:MEAS:CONS:SMU4 0"  # sets the constant SOURCE value of SMU3 for sweep measurements
-
+      #- ":PAGE:MEAS:CONS:SMU1 0"  # sets the constant SOURCE value of SMU1 for sweep measurements
+      - ":PAGE:MEAS:CONS:SMU2 0" 
       # Integration time
       - ":PAGE:MEAS:MSET:ITIM SHORT"
-      #- ":PAGE:MEAS:CONS:SMU3:COMP 0.1"
-      - ":PAGE:MEAS:CONS:SMU4:COMP 0.1"
+      - ":PAGE:MEAS:CONS:SMU2:COMP 0.1"
 
 
-      - ":PAGE:DISP:LIST 'V3','I3','I4'"  # selects the variable names for LIST display
+      - ":PAGE:DISP:LIST 'V1','I1','I2'"  # selects the variable names for LIST display
       - ":PAGE:GLIS:SCAL:AUTO ONCE"
     program:
       minimum:
@@ -91,16 +89,74 @@ setups:
       condition_kwargs:
         int_time: SHORT
 
-  - name: 20v sweep
+  - name: 0.01v sweep
     instrument:
       - "*CLS" # clears the Error Queue
       - "*RST" # performs an instrument reset
-      - ":PAGE:CHAN:SMU3:MODE V"
-      - ":PAGE:CHAN:SMU4:MODE V"
-      - ":PAGE:CHAN:SMU1:FUNC CONS"
-      - ":PAGE:CHAN:SMU2:FUNC CONS"
-      - ":PAGE:CHAN:SMU3:FUNC VAR1" 
-      - ":PAGE:CHAN:SMU4:FUNC CONS"
+      # sets the voltage output MODE
+      - ":PAGE:CHAN:SMU1:MODE V"
+      - ":PAGE:CHAN:SMU2:MODE V"
+
+      
+      - ":PAGE:CHAN:SMU1:FUNC VAR1"
+      - ":PAGE:CHAN:SMU2:FUNC CONS"  # sets the function (FCTN) of SMU1. SMU1 - Emitter
+      - ":PAGE:CHAN:SMU3:FUNC CONS"
+
+      - ":PAGE:CHAN:MODE SWEEP"  # sets the sweep measurement mode
+
+
+      - ":PAGE:MEAS:VAR1:MODE SINGLE"  # sets the SWEEP MODE of VAR1 for sweep measurement.(Single)
+      - ":PAGE:MEAS:VAR1:SPAC LIN"  # selects the sweep type of VAR1 as linear staircase
+      - ":PAGE:MEAS:VAR1:START 0.01"  # sets the sweep START value of VAR1.
+      - ":PAGE:MEAS:VAR1:STEP 0.001"  # sets the sweep STEP value of VAR1 for the linear sweep.
+      - ":PAGE:MEAS:VAR1:STOP -0.01"  # sets the sweep STOP value of VAR1.
+      - ":PAGE:MEAS:VAR1:COMP 0.1"  # sets the COMPLIANCE value of VAR1.
+      - ":PAGE:MEAS:VAR1:PCOM:STATE OFF"
+      #      - ":PAGE:MEAS:HTIM 0"  # sets the HOLD TIME of sweep measurement
+      #      - ":PAGE:MEAS:DEL 0"  # sets the DELAY TIME of SMU.
+
+      - ":PAGE:MEAS:CONS:SMU3 0" 
+      #- ":PAGE:MEAS:CONS:SMU4 0"  # sets the constant SOURCE value of SMU3 for sweep measurements
+
+      # Integration time
+      - ":PAGE:MEAS:MSET:ITIM SHORT"
+      - ":PAGE:MEAS:CONS:SMU3:COMP 0.1"
+      #- ":PAGE:MEAS:CONS:SMU4:COMP 0.1"
+
+
+      - ":PAGE:MEAS:MSET:ITIM SHORT"
+      - ":PAGE:MEAS:CONS:SMU2:COMP 0.1"
+
+
+      - ":PAGE:DISP:LIST 'V1','I1','I2'"  # selects the variable names for LIST display
+      - ":PAGE:GLIS:SCAL:AUTO ONCE"
+    program:
+      minimum:
+        x: voltage_input
+        y: anode_current
+        timeout: 0.5
+      validation:
+        anode_current[0]:
+          min:
+            value: !!float 1e-12
+            message: Current leakage is too low. Check if there is a good contact.
+            abs: true
+          max:
+            value: !!float 1e-9
+            message: Current leakage is too high. Check if there is a light exposure.
+            abs: true
+      condition_kwargs:
+        int_time: SHORT
+
+  - name: 100v sweep
+    instrument:
+      - "*CLS" # clears the Error Queue
+      - "*RST" # performs an instrument reset
+      - ":PAGE:CHAN:SMU1:MODE V"
+      - ":PAGE:CHAN:SMU2:MODE V"
+      - ":PAGE:CHAN:SMU1:FUNC VAR1" 
+      - ":PAGE:CHAN:SMU2:FUNC CONS"  # sets the function (FCTN) of SMU1. SMU1 - Emitter
+      - ":PAGE:CHAN:SMU3:FUNC CONS" 
       - ":PAGE:CHAN:MODE SWEEP"  # sets the sweep measurement mode
 
       - ":PAGE:MEAS:VAR1:MODE SINGLE"  # sets the SWEEP MODE of VAR1 for sweep measurement.(Single)
@@ -115,12 +171,12 @@ setups:
 
       # Integration time
       - ":PAGE:MEAS:MSET:ITIM SHORT"
-      #- ":PAGE:MEAS:CONS:SMU3:COMP 0.1"
-      - ":PAGE:MEAS:CONS:SMU4:COMP 0.1"
-      #- ":PAGE:MEAS:CONS:SMU3 0" 
-      - ":PAGE:MEAS:CONS:SMU4 0"  # sets the constant SOURCE value of SMU3 for sweep measurements
+      - ":PAGE:MEAS:CONS:SMU1:COMP 0.1"
+      - ":PAGE:MEAS:CONS:SMU2:COMP 0.1"
+      #- ":PAGE:MEAS:CONS:SMU1 0"  # sets the constant SOURCE value of SMU1 for sweep measurements
+      - ":PAGE:MEAS:CONS:SMU2 0" 
 
-      - ":PAGE:DISP:LIST 'V3','I3','I4'"  # selects the variable names for LIST display
+      - ":PAGE:DISP:LIST 'V1','I1','I2'"  # selects the variable names for LIST display
     program:
       validation:
         anode_current[-3]: # -1 volt

@@ -8,7 +8,7 @@ instruments:
     kind: "temperature"
   main:
     name: "Keithley SMU 4155 (EPG with temperature)"
-    resource: "GPIB1::18::INSTR"
+    resource: "GPIB1::17::INSTR"
     kind: "pyvisa"
     kwargs:
       timeout: 250000

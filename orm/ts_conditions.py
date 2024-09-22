@@ -1,5 +1,3 @@
-# pyright: reportUndefinedVariable=false
-
 from datetime import datetime as datetime_type
 
 from sqlalchemy import (

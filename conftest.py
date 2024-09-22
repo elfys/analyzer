@@ -23,10 +23,6 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Session
-from typeguard import (
-    TypeguardFinder,
-    install_import_hook,
-)
 
 
 def pytest_addoption(parser):
@@ -113,16 +109,6 @@ def session(apply_migrations, alembic_engine):
 @pytest.fixture(scope="session")
 def runner():
     return CliRunner()
-
-
-class CustomFinder(TypeguardFinder):
-    def should_instrument(self, module_name: str):
-        parts = module_name.split('.')
-        should = parts[0] in ('analyzer', 'orm', 'measure', 'utils') and 'tests' not in parts
-        return should
-
-
-install_import_hook(None, cls=CustomFinder)
 
 
 class LogMemHandler(Handler):

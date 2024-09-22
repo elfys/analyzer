@@ -1,5 +1,3 @@
-# pyright: reportUndefinedVariable=false
-
 from decimal import Decimal
 from typing import Optional
 

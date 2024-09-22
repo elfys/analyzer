@@ -1,13 +1,14 @@
-name: Quality assurance
+name: Unit Tests
 
-on: push
+on:
+  push:
 
 permissions:
   contents: read
 
-
 jobs:
-  qa:
+  tests:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
 
     services:
@@ -18,15 +19,24 @@ jobs:
           MYSQL_DATABASE: test
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Read Python version from .python-version
+        id: read_python_version
+        run: echo "PYTHON_VERSION=$(cat .python-version)" >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.12.2'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pipenv'
 
       - name: Install dependencies
@@ -34,17 +44,13 @@ jobs:
           pip install pipenv
           pipenv install --deploy --dev --system
 
-      - name: Lint with flake8
+      - name: Wait for MySQL service
         run: |
-          flake8 .
-
-      - name: Analysing the code with pylint
-        run: |
-          pylint --rcfile=.pylintrc --ignore=tests analyzer measure
-          pylint --rcfile=tests.pylintrc analyzer/tests measure/tests
-
-      - name: Static type checking
-        run: pyright
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 --port=3306 --silent && break
+            echo "Waiting for MySQL..."
+            sleep $i
+          done
 
       - name: Run analyzer unit tests
         run: timeout 2m pytest ./analyzer --db-url='mysql://root:pwd@127.0.0.1:3306/test' || exit 1

@@ -1,3 +1,12 @@
+"""
+This script is used to measure the capacitance by using the IV tool with a high voltage.
+
+Run directly from the terminal with the following command:
+```shell
+    python measure/adhoc/cv-100.py
+```
+"""
+
 from typing import cast
 
 import numpy as np

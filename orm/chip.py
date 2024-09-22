@@ -1,5 +1,3 @@
-# pyright: reportUndefinedVariable=false
-
 import re
 from typing import (
     ClassVar,
@@ -25,7 +23,7 @@ from .abstract_repository import AbstractRepository
 from .base import Base
 
 
-class ChipCollectionMeta(type):
+class ChipCollectionMeta(type(Base)):
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
         if chip_sizes := dct.get("chip_sizes"):
@@ -46,11 +44,7 @@ class ChipCollectionMeta(type):
         globals()[class_name] = chip_class
 
 
-class BaseMeta(type(Base), ChipCollectionMeta):
-    pass
-
-
-class Chip(Base, metaclass=BaseMeta):
+class Chip(Base, metaclass=ChipCollectionMeta):
     __tablename__ = "chip"
     __table_args__ = tuple([UniqueConstraint("name", "wafer_id", name="unique_chip")])
     __mapper_args__ = {

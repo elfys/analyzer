@@ -13,9 +13,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Read Python version from .python-version
+        id: read_python_version
+        run: echo "PYTHON_VERSION=$(cat .python-version)" >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.12.2'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pipenv'
 
       - name: Install dependencies

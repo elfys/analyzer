@@ -1,0 +1,39 @@
+name: Code Analysis
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  pylint:
+    name: Analyze Code with Pylint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read Python version from .python-version
+        id: read_python_version
+        run: echo "PYTHON_VERSION=$(cat .python-version)" >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pipenv'
+
+      - name: Install dependencies
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev --system
+
+      - name: Run pylint on analyzer and measure
+        run: |
+          pylint --rcfile=.pylintrc --ignore=tests analyzer measure
+
+      - name: Run pylint on test modules
+        run: |
+          pylint --rcfile=tests.pylintrc analyzer/tests measure/tests

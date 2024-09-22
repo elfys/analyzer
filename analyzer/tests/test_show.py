@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from analyzer import analyzer
 from analyzer.show import show_wafers
 from orm import (
-    Chip,
+    AbstractChip,
     Wafer,
 )
 
@@ -18,7 +18,7 @@ class TestShowWafers:
     
     @pytest.fixture(autouse=True, scope="class")
     def db(self, session: Session):
-        session.query(Chip).delete()
+        session.query(AbstractChip).delete()
         session.query(Wafer).delete()
         session.execute(text("ALTER TABLE wafer AUTO_INCREMENT = 1"))  # reset id generator
         session.commit()

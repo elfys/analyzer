@@ -19,7 +19,7 @@ from sqlalchemy.orm import (
 
 from orm import (
     CVMeasurement,
-    Chip,
+    AbstractChip,
     ChipState,
     Wafer,
 )
@@ -50,7 +50,7 @@ class SheetsCVData(TypedDict):
     voltages: list[Decimal]
 
 
-@click.command(name="cv", help="Make summary (png and xlsx) for CV measurements' data.")
+@click.command(name="cv")
 @pass_analyzer_context
 @click.option(
     "-t", "--chips-type", help="Type of the chips to analyze.",
@@ -78,7 +78,7 @@ class SheetsCVData(TypedDict):
     default=(0.01, 0.99),
     show_default=True,
     type=click.Tuple([float, float]),
-    help="Min and max plotted values cutoff.",
+    help="Min and max plotted values cutoff. Use `-q 0 0` to plot a failure map based on thresholds.",
 )
 @click.option(
     "--before",
@@ -99,14 +99,17 @@ def summary_cv(
     before: datetime | date | None,
     after: datetime | date | None,
 ):
+    """
+    Make summary (png and xlsx) for CV measurements' data.
+    """
     query: Query = (
         ctx.session.query(CVMeasurement)
-        .filter(CVMeasurement.chip.has(Chip.wafer == wafer))
+        .filter(CVMeasurement.chip.has(AbstractChip.wafer == wafer))
         .options(joinedload(CVMeasurement.chip))
     )
     
     if chips_type is not None:
-        query = query.filter(CVMeasurement.chip.has(Chip.type == chips_type))
+        query = query.filter(CVMeasurement.chip.has(AbstractChip.type == chips_type))
     else:
         ctx.logger.info(
             "Chips type (-t or --chips-type) is not specified. Analyzing all chip types."
@@ -165,6 +168,16 @@ def save_cv_summary_to_excel(
     voltages: Iterable[Decimal],
     thresholds: dict[str, dict[Decimal, float]],
 ):
+    """
+        Save the CV summary data to an Excel file.
+
+    :param sheets_data: The data to be saved.
+    :param info: Additional information to be saved in the Excel file.
+    :param file_name: The name of the Excel file to save the data to.
+    :param voltages: The voltages to be included in the summary.
+    :param thresholds: The thresholds for conditional formatting.
+    :return: None
+    """
     summary_df = get_slice_by_voltages(sheets_data["capacitance"], voltages)
     rules = {
         "greaterThanOrEqual": PatternFill(bgColor="ee9090", fill_type="solid"),
@@ -186,6 +199,11 @@ def save_cv_summary_to_excel(
 def get_sheets_cv_data(
     measurements: list[CVMeasurement],
 ) -> SheetsCVData:
+    """
+     Extract CV measurements data from given sequence of measurements into separate dataframes.
+    :param measurements: sequence of measurements
+    :return:
+    """
     chip_names: list[str] = sorted({measurement.chip.name for measurement in measurements})
     voltages: list[Decimal] = sorted({measurement.voltage_input for measurement in measurements})
     capacitance_df = pd.DataFrame(index=pd.Index(chip_names), columns=pd.Index(voltages))

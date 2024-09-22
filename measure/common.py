@@ -20,6 +20,13 @@ from .instrument import PyVisaInstrument
 
 @pass_measure_context
 def apply_configs(ctx: MeasureContext, commands: list[str]):
+    """
+    Iteratively execute a list of commands on the main instrument.
+    
+    :param ctx: The context object (provided by the click decorator).
+    :param commands: List of commands to execute.
+    :return:
+    """
     instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["main"])
     for command in commands:
         instrument.write(command)
@@ -30,6 +37,17 @@ def execute_command(
     command: str,
     command_type: str
 ):
+    """
+    Execute a command on the given instrument based on the command type.
+    :param instrument: The instrument to execute the command on.
+    :param command: The command to be executed.
+    :param command_type: The type of the command. It can be one of the following:
+            - "write": Write the command to the instrument.
+            - "query": Query the instrument and return the response.
+            - "query_ascii_values": Query the instrument and return the response as ASCII values.
+            - "query_csv_values": Query the instrument and return the response as CSV values.
+    :return: The result of the command execution, which can be a string or a list of floating values depending on the command type.
+    """
     command_types = {
         "write": instrument.write,
         "query": instrument.query,
@@ -49,6 +67,12 @@ def execute_command(
 @from_config("measure")
 @pass_measure_context
 def get_raw_measurements(ctx: MeasureContext, commands: list[dict]) -> dict[str, list]:
+    """
+    Retrieve raw measurement data by executing a list of commands on the main instrument.
+    :param ctx:  The context object (provided by the click decorator).
+    :param commands: list of commands to execute.
+    :return: dict[str, list]: A dictionary containing the measurement data, with keys as specified by the "name" field in the commands.
+    """
     instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["main"])
     measurements: dict[str, list] = {}
     for command in commands:
@@ -70,6 +94,14 @@ def validate_measurements(
     config: dict,
     automatic_mode: bool
 ):
+    """
+    Validate raw measurement data based on the provided configuration.
+    :param ctx: The context object (provided by the click decorator).
+    :param raw_measurements: The raw measurement data to be validated.
+    :param config: The configuration dictionary containing validation rules.
+    :param automatic_mode: If True, raises an InvalidMeasurementError on validation failure.
+    :return:
+    """
     validation_config = config["program"].get("validation")
     if not validation_config:
         return
@@ -114,6 +146,14 @@ def do_validation(measurements: dict[str, list], rules: dict) -> Optional[str]:
 
 
 def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: Sequence[str]):
+    """
+    Validate the provided chip names based on the measurement context configuration.
+    The number of chip names must match the expected number of chips based on the configuration.
+    :param ctx:
+    :param param:
+    :param chip_names:
+    :return: tuple: A tuple of validated chip names.
+    """
     configs = ctx.find_object(MeasureContext).configs
     chip_names = [name.upper() for name in chip_names]
     expected_chips_number = 1 if "matrix" in configs else len(configs["chips"])
@@ -138,6 +178,12 @@ def validate_chip_names(ctx: click.Context, param: click.Parameter, chip_names: 
 def preprocess_measurements(
     raw_measurements: dict[str, list], chip_config: dict
 ) -> dict[str, list]:
+    """
+    Preprocess raw measurement data based on `chips` configuration (measurement properties mapping).
+    :param raw_measurements: a dictionary of raw measurements from the instrument
+    :param chip_config: a mapping of measurement properties to the raw data
+    :return:
+    """
     measurements_dict = {}
     
     for prop_name, prop_config in chip_config.items():

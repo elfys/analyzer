@@ -4,7 +4,7 @@ from sqlalchemy import (
 )
 
 from orm import (
-    Chip,
+    AbstractChip,
     ChipRepository,
     IVMeasurement,
     IvConditions,
@@ -38,7 +38,7 @@ def iv_conditions(chips):
 
 @pytest.fixture(scope="class")
 def db(wafer, chips, iv_thresholds, session):
-    session.query(Chip).delete()
+    session.query(AbstractChip).delete()
     session.query(Wafer).delete()
     session.query(Misc).delete()
     

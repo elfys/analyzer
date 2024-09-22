@@ -54,6 +54,14 @@ def get_slice_by_voltages(
     df: pd.DataFrame,
     voltages: Iterable[Decimal]
 ) -> pd.DataFrame:
+    """
+    Extract a slice of the DataFrame based on the specified voltages.
+    
+    :param ctx: The context object (provided by the click decorator).
+    :param df: The DataFrame containing the data to be sliced.
+    :param voltages: The voltages to be included in the slice.
+    :return:
+    """
     columns = sorted(voltages)
     slice_df = cast(pd.DataFrame, df[df.columns.intersection(columns)].copy())
     
@@ -82,6 +90,13 @@ def apply_conditional_formatting(
     rules: Mapping[str, Fill],
     thresholds: Mapping[str, Mapping[Decimal, float]],
 ):
+    """
+    Apply conditional formatting to an Excel sheet based on specified rules and thresholds.
+    :param sheet: The Excel worksheet to which the conditional formatting will be applied.
+    :param rules: A dictionary mapping rule names to their corresponding fill styles.
+    :param thresholds: A dictionary mapping chip types to their voltage thresholds.
+    :return:
+    """
     chip_row_index = [(i + 1, cell.value) for i, cell in enumerate(sheet["A"]) if cell.value]
     header_row: tuple[Cell, ...] = sheet["1"]
     
@@ -109,6 +124,14 @@ def get_info(
     chip_states: Iterable[ChipState],
     measurements: list[IVMeasurement] | list[CVMeasurement],
 ) -> pd.Series:
+    """
+    Generate a summary of information for a given wafer, chip states, and measurements.
+
+    :param wafer:
+    :param chip_states:
+    :param measurements:
+    :return:
+    """
     format_date = strftime("%A, %d %b %Y", localtime())
     chip_states_str = "; ".join([state.name for state in chip_states])
     
@@ -190,6 +213,15 @@ def plot_data(
     quantile: tuple[float, float],
     thresholds: dict[Decimal, float],
 ) -> tuple[Figure, Sequence[Sequence[Axes]]]:
+    """
+    Plot data for IV or CV measurements across different voltages.
+    :param values: A sequence of IV or CV measurement objects.
+    :param voltages: A sequence of voltages to plot.
+    :param quantile: A tuple representing the lower and upper quantiles for data clipping.
+    :param thresholds: A dictionary mapping voltages to threshold values for failure map mode.
+                       Used only if quantile is [0, 0].
+    :return:
+    """
     # enable failure map mode if quantile is [0, 0] (red/green based on thresholds)
     failure_map = np.isclose(quantile, [0, 0], atol=1e-5).all()
     

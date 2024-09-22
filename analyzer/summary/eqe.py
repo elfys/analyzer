@@ -30,7 +30,7 @@ from ..context import (
 )
 
 
-@click.command(name="eqe", help="Make summary for EQE measurements' data.")
+@click.command(name="eqe")
 @pass_analyzer_context
 @click.option(
     "-w",
@@ -57,6 +57,9 @@ def summary_eqe(
     eqe_session: Optional[EqeSession],
     no_ref: bool,
 ):
+    """
+    "Make summary (.png and .xlsx) for EQE measurements' data."
+    """
     if eqe_session and wafer:
         raise click.UsageError(
             "--wafer and --session options are not allowed to use simultaneously"
@@ -110,6 +113,14 @@ def get_eqe_plot_figure(sheets_data, no_ref=False) -> Figure:
 
 @pass_analyzer_context
 def query_eqe_conditions(ctx: AnalyzerContext, eqe_session, wafer_name) -> list[EqeConditions]:
+    """
+    Query EQE conditions based on the provided EQE session or wafer name.
+
+    :param ctx: The context object (provided by the click decorator).
+    :param eqe_session: The EQE session to filter the conditions.
+    :param wafer_name: The name of the wafer to filter the conditions.
+    :return:
+    """
     query: Query = (
         ctx.session.query(EqeConditions)
         .options(joinedload(EqeConditions.chip))
@@ -138,6 +149,12 @@ def query_eqe_conditions(ctx: AnalyzerContext, eqe_session, wafer_name) -> list[
 
 
 def get_sheets_eqe_data(conditions: list[EqeConditions]) -> list[dict]:
+    """
+    Process EQE conditions and organize them into a structured format suitable for Excel sheets.
+
+    :param conditions: A list of EQEConditions objects to be processed.
+    :return: A list of dictionaries, each containing a DataFrame and metadata for an Excel sheet.
+    """
     all_sheets = []
     
     series_list = []

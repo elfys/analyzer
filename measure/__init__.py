@@ -25,7 +25,7 @@ from .iv import measure_iv_command
     "config_path",
     required=True,
     type=click.Path(exists=True),
-    help="Path to config file. See ./measure/configs/*.yaml",
+    help="Path to config file. See ./measure/*.yaml files",
 )
 @click.option(
     "--log-level",
@@ -35,7 +35,7 @@ from .iv import measure_iv_command
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False),
 )
 @click.option("--db-url", help="Database URL.", default=lambda: os.environ.get("DB_URL"))
-@click.option("--simulate", is_flag=True, help="Simulate pyvisa instrument.", default=False)
+@click.option("--simulate", is_flag=True, help="Simulate a virtual PyVisa instrument, used for testing purpose", default=False)
 def measure_group(
     ctx: click.Context,
     config_path: str,
@@ -43,6 +43,9 @@ def measure_group(
     db_url: str | URL | None,
     simulate: bool,
 ):
+    """
+    A group of commands for measuring IV and CV characteristics of the chips.
+    """
     ctx_obj = ctx.ensure_object(MeasureContext)
     
     if ctx_obj.logger is None:

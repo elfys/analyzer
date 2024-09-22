@@ -35,6 +35,11 @@ R = TypeVar("R")
 
 
 def from_config[T](path: str):
+    """
+    Decorator to inject a value from the config object as an argument of the decorated function.
+    :param path:
+    :return:
+    """
     def get() -> T:
         ctx = click.get_current_context().find_object(MeasureContext)
         obj = ctx.configs

@@ -5,6 +5,7 @@ import click
 import numpy as np
 
 from orm import (
+    AbstractChip,
     ChipRepository,
     ChipState,
     IVMeasurement,
@@ -35,7 +36,7 @@ from .instrument import (
 )
 
 
-@click.command(name="iv", help="Measure IV data of the current chip.")
+@click.command(name="iv")
 @from_config("instruments.main.name")
 @pass_measure_context
 @click.option("-n",
@@ -68,6 +69,9 @@ def measure_iv_command(
     chip_state: ChipState,
     automatic: bool,
 ):
+    """
+    Measure IV characteristics of the chips.
+    """
     instrument_id = InstrumentRepository(ctx.session).get_id(name=instrument_name)
     if (matrix_config := ctx.configs.get("matrix")) is not None:
         matrix = MatrixRepository(ctx.session).get_or_create_from_configs(
@@ -100,10 +104,20 @@ def measure_iv_command(
 def measure_matrix(
     ctx: MeasureContext,
     matrix: Matrix,
-    automatic,
-    setup_config,
+    automatic: bool,
+    setup_config: dict,
     conditions_kwargs,
 ):
+    """
+    Measure IV characteristics for a matrix of pixels (saved as different chips).
+    
+    :param ctx: The context object (provided by the click decorator).
+    :param matrix: The matrix object containing the chips to be measured.
+    :param automatic: Flag to enable automatic measurement mode
+    :param setup_config: `setup` section of the config file
+    :param conditions_kwargs: Additional keyword arguments for the measurement conditions.
+    :return:
+    """
     scanner = cast(PyVisaInstrument, ctx.instruments["scanner"])
     scanner.write("RX")  # open all channels
     chips = sorted(matrix.chips, key=lambda c: c.name)
@@ -127,12 +141,24 @@ def measure_matrix(
 @pass_measure_context
 def measure_setup(
     ctx: MeasureContext,
-    chip_configs,
+    chip_configs: dict,
     automatic: bool,
-    chips,
-    setup_config,
-    conditions_kwargs,
+    chips: list[AbstractChip],
+    setup_config: dict,
+    conditions_kwargs: dict,
 ):
+    """
+    Measure IV characteristics for a given setup configuration and chips.
+    
+    :param ctx: The context object (provided by the click decorator).
+    :param chip_configs: Configuration for each measured chip, maps measurements to the properties
+        of IVMeasurement entry. Provided by the config file.
+    :param automatic: Flag to enable automatic measurement mode
+    :param chips: List of chips to be linked with the ongoing measurements
+    :param setup_config: `setup` section of the config file, containing the instrument configuration
+    :param conditions_kwargs: Additional keyword arguments for the measurement conditions.
+    :return:
+    """
     thermometer = cast(TemperatureInstrument, ctx.instruments["temperature"])
     temperature = thermometer.get_temperature()
     ctx.logger.info(f"Temperature: {temperature}°C")
@@ -161,6 +187,14 @@ def create_measurements(
     measurements_dict: dict[str, list[float]],
     temperature: float,
 ) -> list[IVMeasurement]:
+    """
+    Create a list of IVMeasurement objects from preprocessed measurement data.
+    
+    :param instrument_config: Configuration for the main instrument. Provided by the config file.
+    :param measurements_dict: Preprocessed measurements data
+    :param temperature: The temperature during measurement
+    :return:
+    """
     measurements = []
     
     for values in zip(*measurements_dict.values(), strict=True):
@@ -176,7 +210,13 @@ def create_measurements(
     return measurements
 
 
-def get_minimal_measurements(config):
+def get_minimal_measurements(config: dict):
+    """
+    Repeatedly measure the IV characteristics until the offset of the linear fit is minimized.
+    
+    :param config: Configuration for the minimization process, containing the x and y values to be measured
+    :return:
+    """
     x, y, timeout = config["x"], config["y"], config["timeout"]
     prev_measurements = {}
     while True:

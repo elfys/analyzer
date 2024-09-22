@@ -21,7 +21,7 @@ from .context import (
 )
 
 
-@click.command(name="cv", help="Measure CV data of the current chip.")
+@click.command(name="cv")
 @pass_measure_context
 @click.option("--chip-name", "-n", "chip_names",
               help="Chip name.",
@@ -50,6 +50,9 @@ def cv(
     chip_state: ChipState,
     automatic_mode: bool,
 ):
+    """
+    Measure CV characteristics of the chips.
+    """
     chips = ChipRepository(ctx.session).get_or_create_chips_for_wafer(chip_names, wafer_name)
     ctx.session.add_all(chips)
     ctx.session.commit()
@@ -77,6 +80,12 @@ def cv(
 def create_measurements(
     measurements_dict: dict[str, list], **kwargs
 ) -> list[CVMeasurement]:
+    """
+    Create a list of CVMeasurement objects from preprocessed measurement data.
+    :param measurements_dict:
+    :param kwargs:
+    :return:
+    """
     measurements = []
     for values in zip(*measurements_dict.values(), strict=True):
         data = dict(zip(measurements_dict.keys(), values, strict=True))

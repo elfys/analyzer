@@ -22,7 +22,7 @@ from sqlalchemy.orm import (
 from orm import (
     CVMeasurement,
     Carrier,
-    Chip,
+    AbstractChip,
     ChipRepository,
     ChipState,
     EqeConditions,
@@ -165,7 +165,7 @@ def parsing_file(ctx: AnalyzerContext, file_path: Path):
         click.confirm("Do you want to continue?", abort=True)
 
 
-def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
+def create_ts_conditions(filename: str, chip: AbstractChip) -> TsConditions:
     structure_types = ["TLM", "AL", "COMB"]
     prefix = "|".join(structure_types)
     matcher = re.compile(rf"^(?P<ts_type>{prefix})(?P<ts_number>\d)(?P<ts_step>\d).*$", re.I)
@@ -195,7 +195,7 @@ def create_ts_conditions(filename: str, chip: Chip) -> TsConditions:
 @pass_analyzer_context
 def guess_chip_and_wafer(
     ctx: AnalyzerContext, filename: str, prefix: str
-) -> tuple[Chip, Wafer]:
+) -> tuple[AbstractChip, Wafer]:
     matcher = re.compile(rf"^{prefix}\s+(?P<wafer>[\w\d]+)\s+(?P<chip>[\w\d-]+)(\s.*)?\..*$", re.I)
     match = matcher.match(filename)
     
@@ -391,7 +391,7 @@ def create_iv_measurements(data: pd.DataFrame) -> list[IVMeasurement]:
 
 
 def create_cv_measurements(
-    data: pd.DataFrame, timestamp: datetime, chip: Chip, chip_state: ChipState
+    data: pd.DataFrame, timestamp: datetime, chip: AbstractChip, chip_state: ChipState
 ) -> Generator[CVMeasurement, None, None]:
     for idx, row in data.iterrows():
         yield CVMeasurement(
@@ -440,7 +440,7 @@ def create_eqe_conditions(
     raw_data: dict,
     instrument_map: dict[str, Instrument],
     file_path: Path,
-    chip: Chip,
+    chip: AbstractChip,
 ) -> EqeConditions:
     existing = ctx.session.query(EqeConditions).filter_by(datetime=raw_data["datetime"]).all()
     if existing:

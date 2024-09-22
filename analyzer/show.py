@@ -6,7 +6,7 @@ from sqlalchemy import (
 )
 
 from orm import (
-    Chip,
+    AbstractChip,
     Wafer,
 )
 from .context import (
@@ -34,7 +34,7 @@ def show_wafers(ctx: AnalyzerContext, json: bool):
     wafers_query = (
         select(
             Wafer,
-            func.count(Chip.id).label("chips_count"),
+            func.count(AbstractChip.id).label("chips_count"),
         )
         .join(Wafer.chips)
         .group_by(Wafer.id)

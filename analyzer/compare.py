@@ -19,7 +19,7 @@ from sqlalchemy import (
 )
 
 from orm import (
-    Chip,
+    AbstractChip,
     ChipRepository,
     ChipState,
     IVMeasurement,
@@ -118,12 +118,12 @@ def get_sheets_data(ctx: AnalyzerContext, wafers: Iterable[Wafer]) -> dict[str, 
     
     threshold_voltages = set({v for x in thresholds.values() for v in x.keys()})
     conditions_query = (
-        select(IvConditions, Chip.type.label("chip_type"), IVMeasurement)
+        select(IvConditions, AbstractChip.type.label("chip_type"), IVMeasurement)
         .join(IvConditions.measurements)
         .join(IvConditions.chip)
         .filter(
-            Chip.wafer_id == bindparam("wafer_id"),
-            Chip.type != "TS",
+            AbstractChip.wafer_id == bindparam("wafer_id"),
+            AbstractChip.type != "TS",
             IVMeasurement.voltage_input.in_(threshold_voltages),
         )
         .order_by(IvConditions.datetime)

@@ -1,5 +1,3 @@
-# WARNING! This configuration was not tested!
-
 instruments:
   temperature:
     resource: "PT100MK1-14A17C.temperature"

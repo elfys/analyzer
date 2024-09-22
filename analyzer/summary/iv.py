@@ -22,7 +22,7 @@ from sqlalchemy.orm import (
 )
 
 from orm import (
-    Chip,
+    AbstractChip,
     ChipState,
     IVMeasurement,
     IvConditions,
@@ -59,7 +59,7 @@ class SheetsIVData[T](TypedDict):
     temperatures: T
 
 
-@click.command(name="iv", help="Make summary (png and xlsx) for IV measurements' data.")
+@click.command(name="iv")
 @pass_analyzer_context
 @click.option(
     "-t", "--chips-type", help="Type of the chips to analyze.",
@@ -86,7 +86,7 @@ class SheetsIVData[T](TypedDict):
     default=(0.01, 0.99),
     show_default=True,
     type=click.Tuple([float, float]),
-    help="Min and max plotted values cutoff.",
+    help="Min and max plotted values cutoff. Use `-q 0 0` to plot a failure map based on thresholds.",
 )
 @click.option(
     "--before",
@@ -107,11 +107,14 @@ def summary_iv(
     before: datetime | date | None,
     after: datetime | date | None,
 ):
+    """
+    Make summary (png and xlsx) for IV measurements' data.
+    """
     query: Query = (
         ctx.session.query(IvConditions)
         .join(IvConditions.measurements)
         .filter(
-            IvConditions.chip.has(Chip.wafer == wafer),
+            IvConditions.chip.has(AbstractChip.wafer == wafer),
             IvConditions.chip_state_id.in_((c.id for c in chip_states)),
         )
         .options(
@@ -122,7 +125,7 @@ def summary_iv(
     )
     
     if chips_type:
-        query = query.filter(IvConditions.chip.has(Chip.type == chips_type))
+        query = query.filter(IvConditions.chip.has(AbstractChip.type == chips_type))
     else:
         ctx.logger.info(
             "Chips type (-t or --chips-type) is not specified. Analyzing all chip types."
@@ -186,11 +189,16 @@ def summary_iv(
 
 
 def get_iv_measurements(conditions: list[IvConditions]) -> list[IVMeasurement]:
-    # sort conditions by amplitude of voltage, smaller go last
-    # thus more precise measurements with voltage input from -0.01 to 0.01 will overwrite less
-    # precise from -1 to 20
+    """
+    Returns a deduplicated list of IV measurements associated with the given IV conditions.
+    """
     
     def get_sort_keys(condition: IvConditions):
+        """
+            sort conditions by amplitude of voltage, smaller go last
+            thus more precise measurements with voltage input from -0.01 to 0.01 will overwrite less
+            precise from -1 to 20
+        """
         voltages = [m.voltage_input for m in condition.measurements]
         voltage_amplitude = max(voltages) - min(voltages)
         return condition.datetime, -voltage_amplitude
@@ -213,6 +221,9 @@ def save_iv_summary_to_excel(
     voltages: Iterable[Decimal],
     thresholds: dict[str, dict[Decimal, float]],
 ):
+    """
+    Save IV summary data to an Excel file.
+    """
     summary_df = get_slice_by_voltages(sheets_data["anode"], voltages)
     summary_df.insert(
         0, "Temperature",
@@ -252,8 +263,11 @@ def save_iv_summary_to_excel(
 def get_sheets_iv_data(
     ctx: AnalyzerContext,
     measurements: Iterable[IVMeasurement],
-    chips: Iterable[Chip],
+    chips: Iterable[AbstractChip],
 ) -> SheetsIVData[pd.DataFrame]:
+    """
+    Extract IV measurements data from given sequence of measurements into separate dataframes.
+    """
     chip_names = sorted({c.name for c in chips})
     chip_index = pd.Index(chip_names)
     temps_df = pd.DataFrame(

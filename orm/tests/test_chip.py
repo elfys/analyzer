@@ -2,13 +2,17 @@ from unittest.mock import patch
 
 import pytest
 
-from orm import chip as chip_module
 from orm.chip import (
     AChip,  # noqa;
+    AbstractChip,
+    BChip,  # noqa
+    CChip,  # noqa
     ChipRepository,
+    GChip,  # noqa
     FChip,  # noqa
     REFChip,  # noqa
     SimpleChip,
+    TestStructureChip,
 )
 
 ALL_CHIP_TYPES = [
@@ -84,7 +88,7 @@ class TestChipRepository:
     @pytest.mark.parametrize('chip_type', ALL_CHIP_TYPES)
     def test_create_creates_chip_of_correct_type(self, chip_type):
         chip = ChipRepository.create(name=f'{chip_type}1234')
-        assert isinstance(chip, chip_module.Chip)
+        assert isinstance(chip, AbstractChip)
     
     def test_get_area_for_simple_chip(self):
         result = ChipRepository.get_area('A')
@@ -116,11 +120,11 @@ class TestChipRepository:
                 ChipRepository.infer_chip_type('B1234')
     
     @pytest.mark.parametrize('chip_name, expected_type', [
-        ('A1234', chip_module.AChip),  # noqa
-        ('B1234', chip_module.BChip),  # noqa
-        ('C1234', chip_module.CChip),  # noqa
-        ('G1234', chip_module.GChip),  # noqa
-        ('TS1234', chip_module.TestStructureChip),
+        ('A1234', AChip),
+        ('B1234', BChip),
+        ('C1234', CChip),
+        ('G1234', GChip),
+        ('TS1234', TestStructureChip),
     ])
     def test_create_creates_chip_of_inferred_type(self, chip_name, expected_type):
         chip = ChipRepository.create(name=chip_name)
@@ -149,10 +153,6 @@ class TestChipRepository:
         assert len(ab_chips) == 2
     
     def test_get_or_create_chips_for_wafer_returns_correct_chip_type(self, ab_chips):
-        from orm.chip import (
-            AChip,
-            BChip,  # noqa
-        )
         assert isinstance(ab_chips[0], AChip)
         assert isinstance(ab_chips[1], BChip)
     
@@ -160,7 +160,7 @@ class TestChipRepository:
         assert not session.new
     
     def test_get_or_create_chips_for_wafer_does_not_increase_chip_count(self, ab_chips, session):
-        assert session.query(chip_module.Chip).count() == 0
+        assert session.query(AbstractChip).count() == 0
     
     def test_get_or_create_chips_for_wafer_after_commit(self, repo, session):
         chips = repo.get_or_create_chips_for_wafer(['A1234', 'B1234'], 'wafer')

@@ -10,7 +10,7 @@ from click.testing import (
 
 from measure import measure_group
 from orm import (
-    Chip,
+    AbstractChip,
     IvConditions,
     Wafer,
 )
@@ -53,7 +53,7 @@ class TestMeasureIVAutomatic:
     
     @pytest.fixture
     def chip(self, session, wafer):
-        return session.query(Chip).filter(Chip.wafer == wafer).one_or_none()
+        return session.query(AbstractChip).filter(AbstractChip.wafer == wafer).one_or_none()
     
     @pytest.fixture
     def iv_conditions(self, session, chip):

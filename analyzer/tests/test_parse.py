@@ -19,7 +19,7 @@ from analyzer.parse import (
 )
 from orm import (
     CVMeasurement,
-    Chip,
+    AbstractChip,
     EqeConditions,
     TestStructureChip,
     TsConditions,
@@ -44,7 +44,7 @@ def should_not_parse_file(file_items: list[tuple[str, str]]):
 
 @pytest.fixture(autouse=True, scope="class")
 def reset_db(session: Session):
-    session.query(Chip).delete()
+    session.query(AbstractChip).delete()
     session.query(Wafer).delete()
     session.execute(text("ALTER TABLE wafer AUTO_INCREMENT = 1"))  # reset id generator
     session.commit()

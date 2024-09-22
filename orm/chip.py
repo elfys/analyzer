@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import (
     ClassVar,
     Type,
@@ -23,7 +24,11 @@ from .abstract_repository import AbstractRepository
 from .base import Base
 
 
-class ChipCollectionMeta(type(Base)):
+class ChipMetaclass(type(Base)):
+    """
+    Metaclass for Chip classes that creates a set of new classes for every chip type in `chip_sizes` class dict.
+    Read more about metaclasses here: https://realpython.com/python-metaclasses/
+    """
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
         if chip_sizes := dct.get("chip_sizes"):
@@ -31,6 +36,7 @@ class ChipCollectionMeta(type(Base)):
                 cls.create_chip_class(chip_type, chip_size)
     
     def create_chip_class(cls, chip_type, chip_size):
+        module = sys.modules[cls.__module__]
         class_name = f"{chip_type}Chip"
         chip_class = type(
             class_name,
@@ -41,10 +47,11 @@ class ChipCollectionMeta(type(Base)):
                 '__chip_type__': chip_type,
             }
         )
-        globals()[class_name] = chip_class
+        chip_class.__module__ = cls.__module__
+        setattr(module, class_name, chip_class)
 
 
-class Chip(Base, metaclass=ChipCollectionMeta):
+class AbstractChip(Base, metaclass=ChipMetaclass):
     __tablename__ = "chip"
     __table_args__ = tuple([UniqueConstraint("name", "wafer_id", name="unique_chip")])
     __mapper_args__ = {
@@ -70,7 +77,7 @@ class Chip(Base, metaclass=ChipCollectionMeta):
         return f"<{self.__class__.__name__}(id={self.id} name='{self.name}')>"
 
 
-class SimpleChip(Chip):  # all chips with size, have IV and CV measurements
+class SimpleChip(AbstractChip):  # all chips with size, have IV and CV measurements
     __mapper_args__ = {"polymorphic_abstract": True}
     
     chip_sizes = {
@@ -136,7 +143,7 @@ class SimpleChip(Chip):  # all chips with size, have IV and CV measurements
         return cls.chip_size
 
 
-class TestStructureChip(Chip):
+class TestStructureChip(AbstractChip):
     __mapper_args__ = {"polymorphic_identity": "TS"}
     
     ts_conditions: Mapped[list["TsConditions"]] = relationship(back_populates="chip")  # noqa: F821
@@ -208,13 +215,13 @@ class EqeChip(SimpleChip):
 class ChipRepositoryMeta(type):
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        subclasses = cls.get_all_subclasses(Chip)
+        subclasses = cls.get_all_subclasses(AbstractChip)
         cls.chip_types = {
             subclass.__mapper_args__["polymorphic_identity"]: subclass
             for subclass in subclasses
             if "polymorphic_identity" in subclass.__mapper_args__}
     
-    def get_all_subclasses(cls, target: type[Chip]) -> list[type[Chip]]:
+    def get_all_subclasses(cls, target: type[AbstractChip]) -> list[type[AbstractChip]]:
         all_subclasses = []
         
         for subclass in target.__subclasses__():
@@ -224,16 +231,16 @@ class ChipRepositoryMeta(type):
         return all_subclasses
 
 
-def is_simple_chip_type(cls: type[Chip]) -> TypeGuard[Type[SimpleChip]]:
+def is_simple_chip_type(cls: type[AbstractChip]) -> TypeGuard[Type[SimpleChip]]:
     return issubclass(cls, SimpleChip)
 
 
-class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
-    model = Chip
-    chip_types: dict[str, type[Chip]]
+class ChipRepository(AbstractRepository[AbstractChip], metaclass=ChipRepositoryMeta):
+    model = AbstractChip
+    chip_types: dict[str, type[AbstractChip]]
     
     @classmethod
-    def get_chip_class(cls, chip_type: str) -> type[Chip]:
+    def get_chip_class(cls, chip_type: str) -> type[AbstractChip]:
         if chip_type not in cls.chip_types:
             raise ValueError(f"Unknown chip type {chip_type}")
         return cls.chip_types[chip_type]
@@ -265,7 +272,7 @@ class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
         return match.group(0)
     
     @classmethod
-    def create(cls, **kwargs) -> Chip:
+    def create(cls, **kwargs) -> AbstractChip:
         if (chip_type := kwargs.get('type')) is None:
             chip_type = cls.infer_chip_type(kwargs["name"])
             kwargs["type"] = chip_type
@@ -279,7 +286,7 @@ class ChipRepository(AbstractRepository[Chip], metaclass=ChipRepositoryMeta):
             raise ValueError(f"Could not create chip of type {model.__name__} with arguments {kwargs}")
         return chip
     
-    def get_or_create_chips_for_wafer(self, chip_names, wafer_name) -> list[Chip]:
+    def get_or_create_chips_for_wafer(self, chip_names, wafer_name) -> list[AbstractChip]:
         from .wafer import (
             Wafer,
             WaferRepository,

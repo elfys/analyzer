@@ -1,6 +1,8 @@
 import logging
 from random import random
+from typing import cast
 
+import click
 import pyvisa
 from pyvisa.constants import (
     VI_ERROR_NLISTENERS,
@@ -37,9 +39,14 @@ class PyVisaInstrument:
         self.logger = logger
     
     def __enter__(self):
-        self.resource = self.rm.open_resource(self.resource_id, **self.config)
+        self.resource = cast(MessageBasedResource, self.rm.open_resource(self.resource_id, **self.config))
         self.check_errors()
-        
+        try:
+            real_name = self.resource.query('*IDN?')
+            self.logger.info(f"Connected to {real_name}")
+        except pyvisa.VisaIOError as e:
+            self.handle_error(e)
+        print(MessageBasedResource, self.resource.query('*IDN?'))
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -68,19 +75,24 @@ class PyVisaInstrument:
     def handle_error(self, e: pyvisa.VisaIOError):
         advice = ""
         if e.error_code == VI_ERROR_TMO:
-            advice = ("\nTry to increase `kwargs.timeout`, `smub.measure.delay` or "
+            advice = ("Try to increase `kwargs.timeout`, `smub.measure.delay` or "
                       "`trigger.timer[1].delay` in the yaml config file.")
         elif e.error_code == VI_ERROR_NLISTENERS:
-            advice = ("\nCheck if the instrument is connected and powered on. "
+            advice = ("Check if the instrument is connected and powered on. "
                       "If the problem persists, try to restart or reconnect the instrument.")
-        raise RuntimeError(f"PyVisaError: {e}{advice}")
+        ctx = click.get_current_context()
+        automatic = ctx.params.get('automatic', False)
+        if automatic:
+            raise RuntimeError(f"PyVisaError: {e}\n{advice}")
+        click.confirm(f"PyVisaError error: {e}\n{advice}\nDo you want to continue?", abort=True, err=True, default=False)
 
 
 class TemperatureInstrument:
-    def __init__(self, sensor_id, simulate=False):
+    def __init__(self, sensor_id, logger: logging.Logger, simulate=False):
         self.sensor_id = sensor_id
         self.simulate = simulate
         self.sensor = None
+        self.logger = logger
     
     def __enter__(self):
         if self.simulate:
@@ -89,11 +101,12 @@ class TemperatureInstrument:
         if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
             raise RuntimeError(f"RegisterHub (temperature sensor) error: {errmsg.value}")
         
-        # TODO: does it work with simple 'temperature' instead of sensor_id?
         sensor: YTemperature = YTemperature.FindTemperature(self.sensor_id)
-        if not sensor.isOnline():
-            raise RuntimeError("Temperature sensor is not connected")
         self.sensor = sensor
+        if not self.sensor.isOnline():
+            raise RuntimeError("Temperature sensor is not connected")
+        else:
+            self.logger.info(f"Temperature: {self.get_temperature()}°C")
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -135,6 +148,6 @@ class InstrumentFactory:
             else:
                 return PyVisaInstrument(resource_id, name, kwargs, self.rm, self.logger)
         elif kind == "temperature":
-            return TemperatureInstrument(resource_id, self.simulate)
+            return TemperatureInstrument(resource_id, self.logger, self.simulate)
         else:
             raise ValueError(f"Unknown instrument kind: {kind}")

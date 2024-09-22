@@ -1,7 +1,9 @@
+import re
 from unittest.mock import (
     MagicMock,
     Mock,
     call,
+    patch,
 )
 
 import pytest
@@ -94,20 +96,46 @@ class TestPyVisaInstrument:
         instrument.resource.query.assert_called_with("print(errorqueue.count)")
         assert "could not convert string to float" in log_handler.records[0].message
         assert "could not convert string to float" in log_handler.records[1].message
-
-    def test_execute_command_visa_timeout_error(self, instrument):
-        error = VisaIOError(-1073807339)
-        with pytest.raises(
-            RuntimeError,
-            match="Timeout expired before operation completed.\nTry to increase `kwargs.timeout`.*"
-        ):
-            instrument.handle_error(error)
+    
+    @pytest.mark.parametrize("error_code, error_match", [
+        (-1073807339,
+         r"PyVisaError: .*Timeout expired before operation completed.\nTry to increase `kwargs.timeout`.*"),
+        (-1073807265,
+         r"PyVisaError: .*No listeners condition is detected.*\nCheck if the instrument is connected.*"),
+        (12345, r"PyVisaError: \? \(12345\): Unknown code."),
+    ])
+    def test_handle_error_automatic(self, instrument, error_code, error_match):
+        error = VisaIOError(error_code)
+        with patch('click.get_current_context') as mock_context:
+            mock_ctx = MagicMock()
+            mock_ctx.params = {'automatic': True}
+            mock_context.return_value = mock_ctx
             
-    def test_execute_command_visa_listeners_error(self, instrument):
-        error = VisaIOError(-1073807265)
-        with pytest.raises(
-            RuntimeError,
-            match="No listeners condition is detected.*\nCheck if the instrument is connected.*"
+            with pytest.raises(
+                RuntimeError,
+                match=error_match
+            ):
+                instrument.handle_error(error)
+    
+    @pytest.mark.parametrize("error_code, error_match", [
+        (-1073807339,
+         r"Timeout expired before operation completed\.\nTry to increase `kwargs\.timeout`.*"),
+        (-1073807265,
+         r"No listeners condition is detected.*\nCheck if the instrument is connected.*"),
+        (12345, r"\? \(12345\): Unknown code."),
+    ])
+    def test_handle_error_non_automatic_confirm_continue(self, instrument, error_code, error_match):
+        visa_error = VisaIOError(error_code)
+        with (
+            patch('click.get_current_context') as mock_context,
+            patch('click.confirm', return_value=True) as mock_confirm
         ):
-            instrument.handle_error(error)
+            mock_ctx = MagicMock()
+            mock_ctx.params = {'automatic': False}
+            mock_context.return_value = mock_ctx
             
+            instrument.handle_error(visa_error)
+            
+            mock_confirm.assert_called_once()
+            assert re.search(error_match, mock_confirm.call_args[0][0])
+            assert mock_confirm.call_args[0][0].endswith("Do you want to continue?")

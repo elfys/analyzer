@@ -11,6 +11,10 @@ from .base import Base
 
 
 class EqeMeasurement(Base):
+    """
+    Stores the results of EQE measurements, including data like wavelength, light current, dark
+    current, and calculated EQE values.
+    """
     __tablename__ = "eqe_data"
     
     id: Mapped[int] = mapped_column(primary_key=True)

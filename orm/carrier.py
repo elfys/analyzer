@@ -11,6 +11,9 @@ from .base import Base
 
 
 class Carrier(Base):
+    """
+    Represents different carriers used in EQE measurements.
+    """
     __tablename__ = "carrier"
     
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)

@@ -8,6 +8,10 @@ from .base import Base
 
 
 class ClientVersion(Base):
+    """
+    Stores the latest release version of `analyzer.exe`. All versions below it will show a warning
+     message and possibly raise an error due to breaking changes in the database structure.
+    """
     __tablename__ = "client_version"
     version: Mapped[str] = mapped_column(CHAR(length=10), unique=True, primary_key=True)
     

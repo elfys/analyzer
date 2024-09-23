@@ -18,6 +18,10 @@ from .base import Base
 
 
 class EqeConditions(Base):
+    """
+    Defines the configuration under which External Quantum Efficiency (EQE) measurements are taken.
+    This includes factors like temperature, instrument settings, and session information.
+    """
     __tablename__ = "eqe_conditions"
     
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -18,6 +18,10 @@ from .base import Base
 
 
 class IvConditions(Base):
+    """
+    Defines the conditions under which Current-Voltage (IV) measurements are conducted, including
+    instrument configurations.
+    """
     __tablename__ = "iv_conditions"
     
     id: Mapped[int] = mapped_column(primary_key=True)

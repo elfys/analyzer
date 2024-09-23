@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>DATABASE</ID>
+  <OriginalElement>87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.alembic_version</OriginalElement>
+  <nodes>
+    <node x="-531.3638518518518" y="1248.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.ts_data</node>
+    <node x="810.3611313131314" y="812.671138047138">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_session</node>
+    <node x="505.2809898989899" y="776.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_conditions</node>
+    <node x="810.3611313131314" y="1046.3989225589225">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.carrier</node>
+    <node x="107.78605723905724" y="788.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.iv_conditions</node>
+    <node x="-203.0" y="458.88140067340066">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip</node>
+    <node x="539.2809898989899" y="1248.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_data</node>
+    <node x="211.0" y="482.8814006734006">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.matrix</node>
+    <node x="-208.27962962962954" y="1576.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip_state</node>
+    <node x="-217.0" y="204.64958922558924">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.wafer</node>
+    <node x="-565.3638518518518" y="788.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.ts_conditions</node>
+    <node x="348.7835235690236" y="1576.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.instrument</node>
+    <node x="-271.0" y="1248.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.cv_data</node>
+    <node x="79.28605723905724" y="1248.0">87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.iv_data</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip_state" relationship="REFERENCES">
+      <point x="-91.79989898989902" y="-117.26954882154882" />
+      <point x="362.3197138047138" y="847.7304511784512" />
+      <point x="362.3197138047138" y="1137.1832727272727" />
+      <point x="5.7203703703704605" y="1137.1832727272727" />
+      <point x="0.0" y="45.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.wafer" relationship="REFERENCES">
+      <point x="-47.75" y="-93.0" />
+      <point x="-155.25" y="509.013468013468" />
+      <point x="-107.5" y="509.013468013468" />
+      <point x="0.0" y="81.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip" relationship="REFERENCES">
+      <point x="1.6044107744107805" y="-165.495973063973" />
+      <point x="617.3854006734007" y="750.1212929292928" />
+      <point x="-107.5" y="750.1212929292928" />
+      <point x="0.0" y="93.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.instrument" relationship="REFERENCES">
+      <point x="-1.4210854715202004E-14" y="-189.0" />
+      <point x="615.7809898989899" y="1065.180579124579" />
+      <point x="428.2835235690236" y="1065.180579124579" />
+      <point x="0.0" y="45.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_session" relationship="REFERENCES">
+      <point x="110.5" y="33.4797575757575" />
+      <point x="726.2809898989899" y="1035.44202020202" />
+      <point x="789.0087474747475" y="1035.44202020202" />
+      <point x="789.0087474747475" y="857.671138047138" />
+      <point x="-72.0" y="0.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.cv_data" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip" relationship="REFERENCES">
+      <point x="54.5" y="-93.0" />
+      <point x="-162.0" y="1248.0" />
+      <point x="-162.0" y="748.0687272727272" />
+      <point x="-107.5" y="748.0687272727272" />
+      <point x="0.0" y="93.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.iv_data" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.iv_conditions" relationship="REFERENCES">
+      <point x="0.0" y="-105.0" />
+      <point x="0.0" y="105.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.carrier" relationship="REFERENCES">
+      <point x="-88.40000000000003" y="-189.0" />
+      <point x="527.3809898989898" y="1087.900255892256" />
+      <point x="889.8611313131314" y="1087.900255892256" />
+      <point x="0.0" y="45.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.iv_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.instrument" relationship="REFERENCES">
+      <point x="73.84059595959599" y="63.4932525252525" />
+      <point x="428.77624242424247" y="956.4932525252525" />
+      <point x="0.49271885521886816" y="-37.908390572390545" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.matrix" relationship="REFERENCES">
+      <point x="47.75" y="-93.0" />
+      <point x="-59.75" y="599.0916363636364" />
+      <point x="225.16439057239063" y="599.0916363636364" />
+      <point x="225.16439057239063" y="620.8814006734005" />
+      <point x="0.0" y="69.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.ts_data" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.ts_conditions" relationship="REFERENCES">
+      <point x="0.0" y="-93.0" />
+      <point x="0.0" y="93.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.iv_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip" relationship="REFERENCES">
+      <point x="-4.786057239057243" y="-105.0" />
+      <point x="193.5" y="750.1212929292928" />
+      <point x="-107.5" y="750.1212929292928" />
+      <point x="-107.5" y="614.0916363636364" />
+      <point x="95.5" y="62.21023569023578" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.iv_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip_state" relationship="REFERENCES">
+      <point x="-76.29147138047136" y="-33.31267340067336" />
+      <point x="5.720370370370574" y="859.6873265993266" />
+      <point x="5.720370370370574" y="1576.0" />
+      <point x="56.889134680134475" y="-45.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.ts_conditions" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip" relationship="REFERENCES">
+      <point x="0.0" y="-93.0" />
+      <point x="-459.3638518518518" y="749.1590303030302" />
+      <point x="-107.5" y="749.1590303030302" />
+      <point x="0.0" y="93.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.cv_data" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.chip_state" relationship="REFERENCES">
+      <point x="0.0" y="93.0" />
+      <point x="-162.0" y="1341.0" />
+      <point x="5.720370370370574" y="1341.0" />
+      <point x="5.720370370370574" y="1459.25" />
+      <point x="5.7203703703704605" y="1459.25" />
+      <point x="5.7203703703704605" y="1586.9810909090909" />
+      <point x="-208.27962962962954" y="1586.9810909090909" />
+      <point x="-214.0" y="0.0" />
+    </edge>
+    <edge source="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_data" target="87d5f70b-2751-4673-98d7-b86816f4f407.TABLE:elfys.eqe_conditions" relationship="REFERENCES">
+      <point x="0.0" y="-117.0" />
+      <point x="0.0" y="189.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Compact" zoom="0.5681470372184133" showDependencies="false" x="-221.99598653198655" y="774.2749090909091" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Columns</Category>
+    <Category>Comments</Category>
+    <Category>Key columns</Category>
+  </Categories>
+</Diagram>
+

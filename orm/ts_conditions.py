@@ -17,6 +17,10 @@ from .base import Base
 
 
 class TsConditions(Base):
+    """
+    Defines the conditions under which Test Structure (TS) measurements are conducted, including
+    specific test steps and configurations.
+    """
     __tablename__ = "ts_conditions"
     __table_args__ = (
         UniqueConstraint(

@@ -17,6 +17,10 @@ from .base import Base
 
 
 class CVMeasurement(Base):
+    """
+    Stores Capacitance-Voltage (CV) measurement data for each chip, capturing how capacitance varies
+    with applied voltage.
+    """
     __tablename__ = "cv_data"
     
     id: Mapped[int] = mapped_column(primary_key=True)

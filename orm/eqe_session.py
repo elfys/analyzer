@@ -11,6 +11,10 @@ from .base import Base
 
 
 class EqeSession(Base):
+    """
+    Records sessions date during which EQE (External Quantum Efficiency) measurements are conducted,
+    allowing for session-based data organization.
+    """
     __tablename__ = "eqe_session"
     
     id: Mapped[int] = mapped_column(primary_key=True)

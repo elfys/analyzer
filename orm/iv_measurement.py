@@ -1,5 +1,10 @@
 from decimal import Decimal
-from typing import Optional
+from typing import (
+    Any,
+    Optional,
+    Sequence,
+    TypeGuard,
+)
 
 from sqlalchemy import (
     DECIMAL,
@@ -50,3 +55,7 @@ class IVMeasurement(Base):
     @property
     def datetime(self):
         return self.conditions.datetime
+
+
+def is_iv_measurements(value: Sequence[Any]) -> TypeGuard[Sequence[IVMeasurement]]:
+    return isinstance(value[0], IVMeasurement)

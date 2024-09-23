@@ -5,12 +5,9 @@ from time import (
     strftime,
 )
 from typing import (
-    Any,
-    Collection,
     Iterable,
     Mapping,
     Sequence,
-    TypeGuard,
     cast,
 )
 
@@ -43,6 +40,8 @@ from orm import (
     IVMeasurement,
     Wafer,
 )
+from orm.cv_measurement import is_cv_measurements
+from orm.iv_measurement import is_iv_measurements
 
 date_formats = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
 date_formats_help = f"Supported formats are: {', '.join((strftime(f) for f in date_formats))}."
@@ -150,12 +149,8 @@ def get_info(
     )
 
 
-def plot_hist(ax: Axes, data: np.ndarray):
-    ax.set_ylabel("Number of chips")
-    ax.hist(data * 1e12, bins=15)
 
-
-def plot_map(
+def plot_grid(
     ax: Axes,
     colors: np.ndarray,
     xs: np.ndarray,
@@ -164,6 +159,16 @@ def plot_map(
     heights: np.ndarray,
     cmap: Colormap,
 ):
+    """
+    Plot a grid of rectangles with colors based on the provided data.
+    :param ax: Axes object to plot the grid.
+    :param colors: 1d numpy array containing the colors to be used for the rectangles.
+    :param xs: 1d numpy array containing the x-coordinates of the chips.
+    :param ys: 1d numpy array containing the y-coordinates of the chips.
+    :param widths: 1d numpy array containing the widths of the chips.
+    :param heights: 1d numpy array containing the heights of the chips.
+    :param cmap: The colormap to be used for the colors.
+    """
     for x, y, w, h, v in zip(xs, ys, widths, heights, colors):
         rect = Rectangle(
             (x, y), w, h,
@@ -182,49 +187,25 @@ def plot_map(
     ax.invert_yaxis()
 
 
-def get_iv_plot_data(measurements: Collection[IVMeasurement]):
-    data = np.array([value.get_anode_current_value() for value in measurements])
-    chips = [measurement.conditions.chip for measurement in measurements]
-    xs = np.array([chip.x_coordinate for chip in chips])
-    ys = np.array([chip.y_coordinate for chip in chips])
-    widths = np.array([chip.width for chip in chips])
-    heights = np.array([chip.height for chip in chips])
-    return data, xs, ys, widths, heights
-
-
-def get_cv_plot_data(measurements: Collection[CVMeasurement]):
-    data = np.array([value.capacitance for value in measurements])
-    xs = np.array([measurement.chip.x_coordinate for measurement in measurements])
-    ys = np.array([measurement.chip.y_coordinate for measurement in measurements])
-    return data, xs, ys
-
-
-def is_iv_measurements(value: Sequence[Any]) -> TypeGuard[Sequence[IVMeasurement]]:
-    return isinstance(value[0], IVMeasurement)
-
-
-def is_cv_measurements(value: Sequence[Any]) -> TypeGuard[Sequence[CVMeasurement]]:
-    return isinstance(value[0], CVMeasurement)
-
-
-def plot_data(
+@pass_analyzer_context
+def plot_measurements_by_voltage(
+    ctx: AnalyzerContext,
     values: Sequence[IVMeasurement] | Sequence[CVMeasurement],
     voltages: Sequence[Decimal],
     quantile: tuple[float, float],
     thresholds: dict[Decimal, float],
-) -> tuple[Figure, Sequence[Sequence[Axes]]]:
+) -> (Figure, Sequence[Sequence[Axes]]):
     """
     Plot data for IV or CV measurements across different voltages.
+    :param ctx: The context object (provided by the click decorator).
     :param values: A sequence of IV or CV measurement objects.
     :param voltages: A sequence of voltages to plot.
     :param quantile: A tuple representing the lower and upper quantiles for data clipping.
     :param thresholds: A dictionary mapping voltages to threshold values for failure map mode.
                        Used only if quantile is [0, 0].
-    :return:
+    :return: A tuple containing the figure and 2d axes array.
     """
-    # enable failure map mode if quantile is [0, 0] (red/green based on thresholds)
-    failure_map = np.isclose(quantile, [0, 0], atol=1e-5).all()
-    
+    failure_map = quantile == (0, 0)
     cols_num = 1 if failure_map else 2
     fig, axes = plt.subplots(
         nrows=len(voltages),
@@ -245,52 +226,119 @@ def plot_data(
         zip(axes, sorted(voltages), strict=True), label="Plotting...", length=len(voltages)
     ) as progress:
         for v_axes, voltage in progress:
-            target_values = [value for value in values if value.voltage_input == voltage]
-            if len(target_values) == 0:
+            target_measurements = [m for m in values if m.voltage_input == voltage]
+            if len(target_measurements) == 0:
                 continue
-            if is_iv_measurements(target_values):
-                data, xs, ys, widths, heights = get_iv_plot_data(target_values)
+            
+            if is_iv_measurements(target_measurements):
+                chips = [measurement.conditions.chip for measurement in target_measurements]
+                data = np.array([value.get_anode_current_value() for value in target_measurements])
+                
                 hist_xlabel = 'Anode current [pA]'
-            elif is_cv_measurements(target_values):
-                data, xs, ys = get_cv_plot_data(target_values)
+            elif is_cv_measurements(target_measurements):
+                data = np.array([value.capacitance for value in target_measurements])
+                chips = [measurement.chip for measurement in target_measurements]
+                
                 hist_xlabel = 'Capacitance [pF]'
             else:
                 raise RuntimeError("Unknown object type was provided")
             
-            for ax in v_axes:
-                ax.set_title(f"{voltage}V")
+            xs = np.array([chip.x_coordinate for chip in chips])
+            ys = np.array([chip.y_coordinate for chip in chips])
+            widths = np.array([chip.width for chip in chips])
+            heights = np.array([chip.height for chip in chips])
             
             if failure_map:
-                if voltage not in thresholds:
-                    click.get_current_context().obj.logger.warning(
-                        f"Thresholds for {voltage}V are not found. Skipping."
-                    )
+                v_thresholds = thresholds.get(voltage)
+                if v_thresholds is None:
+                    ctx.logger.warning(f"Thresholds for {voltage}V are not found. Skipping.")
                     continue
                 
-                map_ax = v_axes[0]
-                colors = (data > thresholds[voltage]).astype(np.float32)
-                cmap = ListedColormap(["#ff3030", "#30ff30"], "red_green")
-                plot_map(map_ax, colors, xs, ys, widths, heights, cmap)
-                map_ax.legend(
-                    handles=[
-                        mpatches.Patch(color=cmap(0), label="Failure"),
-                        mpatches.Patch(color=cmap(1), label="Success"),
-                    ],
-                    loc="best",
-                )
+                plot_failure_map(v_axes[0], data, xs, ys, widths, heights, v_thresholds)
             else:
                 hist_ax, map_ax = v_axes
-                lower_bound, upper_bound = np.quantile(data, quantile)
-                clipped_data = np.clip(data, lower_bound, upper_bound)
-                plot_hist(hist_ax, clipped_data)
+                plot_heatmap_and_histogram(
+                    (hist_ax, map_ax), data, xs, ys, widths, heights, quantile)
                 hist_ax.set_xlabel(hist_xlabel)
-                # increase upper bound so the highest level does not look white on hot cmap
-                upper_bound += (upper_bound - lower_bound) * 0.2
-                
-                norm = Normalize(vmin=lower_bound, vmax=upper_bound)
-                cmap: Colormap = plt.get_cmap('hot')
-                colors = norm(clipped_data)
-                plot_map(map_ax, colors, xs, ys, widths, heights, cmap)
-                ax.figure.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax)
+            
+            for ax in v_axes:
+                ax.set_title(f"{voltage}V")
     
     return fig, axes
+
+
+def plot_heatmap_and_histogram(
+    v_axes: (Axes, Axes),
+    data: np.ndarray,
+    xs: np.ndarray,
+    ys: np.ndarray,
+    widths: np.ndarray,
+    heights: np.ndarray,
+    quantile: tuple[float, float]
+) -> None:
+    """
+    Plot the heatmap and histogram for IV or CV measurements with clipping based on quantiles.
+    
+    :param v_axes:  A tuple containing the histogram and heatmap axes.
+    :param data: 2d numpy array containing the data to be plotted.
+    :param xs: 1d numpy array containing the x-coordinates of the chips.
+    :param ys: 1d numpy array containing the y-coordinates of the chips.
+    :param widths: 1d numpy array containing the widths of the chips.
+    :param heights: 1d numpy array containing the heights of the chips.
+    :param quantile: A tuple representing the lower and upper quantiles for data clipping.
+    """
+    hist_ax, map_ax = v_axes
+    lower_bound, upper_bound = np.quantile(data, quantile)
+    clipped_data = np.clip(data, lower_bound, upper_bound)
+    
+    # Plot histogram
+    hist_ax.hist(data * 1e12, bins=15)
+    hist_ax.set_ylabel("Number of chips")
+    
+    # Adjust the upper bound for better color scaling
+    upper_bound += (upper_bound - lower_bound) * 0.2
+    norm = Normalize(vmin=lower_bound, vmax=upper_bound)
+    cmap: Colormap = plt.get_cmap('hot')
+    
+    # Normalize colors and plot the heatmap
+    colors = norm(clipped_data)
+    plot_grid(map_ax, colors, xs, ys, widths, heights, cmap)
+    
+    # Add colorbar
+    hist_ax.figure.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=hist_ax)
+
+
+def plot_failure_map(
+    ax: Axes,
+    data: np.ndarray,
+    xs: np.ndarray,
+    ys: np.ndarray,
+    widths: np.ndarray,
+    heights: np.ndarray,
+    threshold: float,
+) -> None:
+    """
+    Plot a failure map based on the provided threshold.
+    :param ax: Axes object to plot the failure map.
+    :param data: 2d numpy array containing the data to be plotted.
+    :param xs: 1d numpy array containing the x-coordinates of the chips.
+    :param ys: 1d numpy array containing the y-coordinates of the chips.
+    :param widths: 1d numpy array containing the widths of the chips.
+    :param heights: 1d numpy array containing the heights of the chips.
+    :param threshold: The threshold value for the failure map.
+    :return:
+    """
+    colors = (data > threshold).astype(np.float32)
+    cmap = ListedColormap(["#ff3030", "#30ff30"], "red_green")
+    
+    # Plot the failure map with red/green based on thresholds
+    plot_grid(ax, colors, xs, ys, widths, heights, cmap)
+    
+    # Add legend to indicate "Failure" and "Success"
+    ax.legend(
+        handles=[
+            mpatches.Patch(color=cmap(0), label="Failure"),
+            mpatches.Patch(color=cmap(1), label="Success"),
+        ],
+        loc="best",
+    )

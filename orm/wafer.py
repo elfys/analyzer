@@ -17,6 +17,9 @@ from .base import Base
 
 
 class Wafer(Base):
+    """
+    Represents wafers.
+    """
     __tablename__ = "wafer"
     
     id: Mapped[int] = mapped_column(primary_key=True)

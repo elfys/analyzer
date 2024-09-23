@@ -14,6 +14,11 @@ from .chip import ChipRepository
 
 
 class Matrix(Base):
+    """
+    Defines matrices, which are groups of physically linked chips measured together. This is
+    relevant for Q, R and W chips that are part of a larger grid.
+    """
+    
     __tablename__ = 'matrix'
     
     id = Column(Integer, primary_key=True)

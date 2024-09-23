@@ -15,6 +15,10 @@ from .base import Base
 
 
 class IVMeasurement(Base):
+    """
+    Stores the results of Current-Voltage (IV) measurements, including voltage applied and current
+    measured.
+    """
     __tablename__ = "iv_data"
     
     id: Mapped[int] = mapped_column(primary_key=True)

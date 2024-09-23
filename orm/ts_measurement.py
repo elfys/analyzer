@@ -9,6 +9,10 @@ from .base import Base
 
 
 class TsMeasurement(Base):
+    """
+    Stores data from Test Structure (TS) measurements, including current, voltage readings, and
+    calculated resistance.
+    """
     __tablename__ = "ts_data"
     
     id: Mapped[int] = mapped_column(primary_key=True)

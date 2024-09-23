@@ -8,6 +8,10 @@ from .base import Base
 
 
 class ChipState(Base):
+    """
+    Indicates the state of a chip during measurement, such as "before wafer dicing", "after wire bonding" etc.
+    """
+    
     __tablename__ = "chip_state"
     
     id: Mapped[int] = mapped_column(primary_key=True)

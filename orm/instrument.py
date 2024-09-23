@@ -12,6 +12,10 @@ from .base import Base
 
 
 class Instrument(Base):
+    """
+    Consists of instruments used in the measurement setup, allowing to identify the instrument and
+    the location of the performed measurements.
+    """
     __tablename__ = "instrument"
     
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)

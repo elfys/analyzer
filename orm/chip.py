@@ -77,7 +77,10 @@ class AbstractChip(Base, metaclass=ChipMetaclass):
         return f"<{self.__class__.__name__}(id={self.id} name='{self.name}')>"
 
 
-class SimpleChip(AbstractChip):  # all chips with size, have IV and CV measurements
+class SimpleChip(AbstractChip):
+    """
+    Base class for simple chips with known size. Have related IV and CV measurements.
+    """
     __mapper_args__ = {"polymorphic_abstract": True}
     
     chip_sizes = {
@@ -150,6 +153,10 @@ class TestStructureChip(AbstractChip):
 
 
 class MatrixChip(SimpleChip):
+    """
+    Represents chips that are part of a matrix, such as Q, R and W chips.
+    """
+    
     xcoord_re = re.compile(r'^\d\d(?P<matrix>\d\d)_\d(?P<px>\d)$')
     ycoord_re = re.compile(r'^(?P<matrix>\d\d)\d\d_(?P<px>\d)\d$')
     
@@ -191,6 +198,9 @@ class MatrixChip(SimpleChip):
 
 
 class EqeChip(SimpleChip):
+    """
+    Represents chips used in EQE measurements.
+    """
     __mapper_args__ = {"polymorphic_abstract": True}
     eqe_conditions: Mapped[list["EqeConditions"]] = relationship(  # noqa: F821
         back_populates="chip"

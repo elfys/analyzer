@@ -1,5 +1,10 @@
 from datetime import datetime as datetime_type
 from decimal import Decimal
+from typing import (
+    Any,
+    Sequence,
+    TypeGuard,
+)
 
 from sqlalchemy import (
     DECIMAL,
@@ -49,3 +54,7 @@ class CVMeasurement(Base):
             self.chip,
             self.capacitance,
         )
+
+
+def is_cv_measurements(value: Sequence[Any]) -> TypeGuard[Sequence[CVMeasurement]]:
+    return isinstance(value[0], CVMeasurement)

@@ -36,7 +36,7 @@ from .common import (
     date_formats_help,
     get_info,
     get_slice_by_voltages,
-    plot_data,
+    plot_measurements_by_voltage,
 )
 from ..context import (
     AnalyzerContext,
@@ -146,7 +146,7 @@ def summary_cv(
             "Plotting is not supported and will be skipped.")
     else:
         chips_type = next(iter(chips_types))
-        fig, axes = plot_data(measurements, voltages, quantile, thresholds.get(chips_type, {}))
+        fig, axes = plot_measurements_by_voltage(measurements, voltages, quantile, thresholds.get(chips_type, {}))
         fig.suptitle(wafer.name, fontsize=14)
         
         png_file_name = f"{file_name}.png"

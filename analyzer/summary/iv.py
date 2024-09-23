@@ -43,7 +43,7 @@ from .common import (
     date_formats_help,
     get_info,
     get_slice_by_voltages,
-    plot_data,
+    plot_measurements_by_voltage,
 )
 from ..context import (
     AnalyzerContext,
@@ -169,7 +169,7 @@ def summary_iv(
             "Plotting is not supported and will be skipped.")
     else:
         chips_type = next(iter(chips_types))
-        fig, axes = plot_data(
+        fig, axes = plot_measurements_by_voltage(
             measurements,
             summary_voltages,
             quantile,

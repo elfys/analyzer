@@ -38,6 +38,7 @@ from orm import (
     CVMeasurement,
     ChipState,
     IVMeasurement,
+    SimpleChip,
     Wafer,
 )
 from orm.cv_measurement import is_cv_measurements
@@ -149,27 +150,23 @@ def get_info(
     )
 
 
-
 def plot_grid(
     ax: Axes,
     colors: np.ndarray,
-    xs: np.ndarray,
-    ys: np.ndarray,
-    widths: np.ndarray,
-    heights: np.ndarray,
+    rectangles: Iterable[tuple[float, float, float, float] | None],
     cmap: Colormap,
 ):
     """
     Plot a grid of rectangles with colors based on the provided data.
     :param ax: Axes object to plot the grid.
     :param colors: 1d numpy array containing the colors to be used for the rectangles.
-    :param xs: 1d numpy array containing the x-coordinates of the chips.
-    :param ys: 1d numpy array containing the y-coordinates of the chips.
-    :param widths: 1d numpy array containing the widths of the chips.
-    :param heights: 1d numpy array containing the heights of the chips.
+    :param rectangles: A sequence of tuples containing the x, y, width, and height of the rectangles.
     :param cmap: The colormap to be used for the colors.
     """
-    for x, y, w, h, v in zip(xs, ys, widths, heights, colors):
+    for rect, v in zip(rectangles, colors, strict=True):
+        if rect is None:
+            continue
+        x, y, w, h = rect
         rect = Rectangle(
             (x, y), w, h,
             linewidth=0.5,
@@ -177,14 +174,30 @@ def plot_grid(
             facecolor=cmap(v)
         )
         ax.add_patch(rect)
+    ax.relim()
+    ax.autoscale_view()
     
-    ax.set_xlim(xs.min() - 0.5, (xs + widths).max() + 0.5)
-    ax.set_ylim(ys.min() - 0.5, (ys + heights).max() + 0.5)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=0))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True, min_n_ticks=0))
     ax.set_ylabel("Y coordinate")
     ax.set_xlabel("X coordinate")
     ax.invert_yaxis()
+
+
+@pass_analyzer_context
+def get_chip_rectangles(ctx: AnalyzerContext, chips: Sequence[SimpleChip]):
+    """
+    Generate a sequence of chip rectangles based on the provided chips.
+    :param ctx: The context object (provided by the click decorator).
+    :param chips: A sequence of chip objects.
+    :return:
+    """
+    for chip in chips:
+        try:
+            yield chip.x_coordinate, chip.y_coordinate, chip.width, chip.height
+        except (AttributeError, ValueError) as e:
+            ctx.logger.warning(f"Failed to get chip rectangle for {chip}. {e}")
+            yield None
 
 
 @pass_analyzer_context
@@ -243,10 +256,7 @@ def plot_measurements_by_voltage(
             else:
                 raise RuntimeError("Unknown object type was provided")
             
-            xs = np.array([chip.x_coordinate for chip in chips])
-            ys = np.array([chip.y_coordinate for chip in chips])
-            widths = np.array([chip.width for chip in chips])
-            heights = np.array([chip.height for chip in chips])
+            rectangles = get_chip_rectangles(chips)
             
             if failure_map:
                 v_thresholds = thresholds.get(voltage)
@@ -254,11 +264,10 @@ def plot_measurements_by_voltage(
                     ctx.logger.warning(f"Thresholds for {voltage}V are not found. Skipping.")
                     continue
                 
-                plot_failure_map(v_axes[0], data, xs, ys, widths, heights, v_thresholds)
+                plot_failure_map(v_axes[0], data, rectangles, v_thresholds)
             else:
                 hist_ax, map_ax = v_axes
-                plot_heatmap_and_histogram(
-                    (hist_ax, map_ax), data, xs, ys, widths, heights, quantile)
+                plot_heatmap_and_histogram((hist_ax, map_ax), data, rectangles, quantile)
                 hist_ax.set_xlabel(hist_xlabel)
             
             for ax in v_axes:
@@ -270,10 +279,7 @@ def plot_measurements_by_voltage(
 def plot_heatmap_and_histogram(
     v_axes: (Axes, Axes),
     data: np.ndarray,
-    xs: np.ndarray,
-    ys: np.ndarray,
-    widths: np.ndarray,
-    heights: np.ndarray,
+    rectangles: Iterable[tuple[float, float, float, float]],
     quantile: tuple[float, float]
 ) -> None:
     """
@@ -281,10 +287,7 @@ def plot_heatmap_and_histogram(
     
     :param v_axes:  A tuple containing the histogram and heatmap axes.
     :param data: 2d numpy array containing the data to be plotted.
-    :param xs: 1d numpy array containing the x-coordinates of the chips.
-    :param ys: 1d numpy array containing the y-coordinates of the chips.
-    :param widths: 1d numpy array containing the widths of the chips.
-    :param heights: 1d numpy array containing the heights of the chips.
+    :param rectangles: A sequence of tuples containing the x, y, width, and height of the chips.
     :param quantile: A tuple representing the lower and upper quantiles for data clipping.
     """
     hist_ax, map_ax = v_axes
@@ -302,7 +305,7 @@ def plot_heatmap_and_histogram(
     
     # Normalize colors and plot the heatmap
     colors = norm(clipped_data)
-    plot_grid(map_ax, colors, xs, ys, widths, heights, cmap)
+    plot_grid(map_ax, colors, rectangles, cmap)
     
     # Add colorbar
     hist_ax.figure.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=hist_ax)
@@ -311,20 +314,14 @@ def plot_heatmap_and_histogram(
 def plot_failure_map(
     ax: Axes,
     data: np.ndarray,
-    xs: np.ndarray,
-    ys: np.ndarray,
-    widths: np.ndarray,
-    heights: np.ndarray,
+    rectangles: Iterable[tuple[float, float, float, float]],
     threshold: float,
 ) -> None:
     """
     Plot a failure map based on the provided threshold.
     :param ax: Axes object to plot the failure map.
     :param data: 2d numpy array containing the data to be plotted.
-    :param xs: 1d numpy array containing the x-coordinates of the chips.
-    :param ys: 1d numpy array containing the y-coordinates of the chips.
-    :param widths: 1d numpy array containing the widths of the chips.
-    :param heights: 1d numpy array containing the heights of the chips.
+    :param rectangles: A sequence of tuples containing the x, y, width, and height of the chips.
     :param threshold: The threshold value for the failure map.
     :return:
     """
@@ -332,7 +329,7 @@ def plot_failure_map(
     cmap = ListedColormap(["#ff3030", "#30ff30"], "red_green")
     
     # Plot the failure map with red/green based on thresholds
-    plot_grid(ax, colors, xs, ys, widths, heights, cmap)
+    plot_grid(ax, colors, rectangles, cmap)
     
     # Add legend to indicate "Failure" and "Success"
     ax.legend(

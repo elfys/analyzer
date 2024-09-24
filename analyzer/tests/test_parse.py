@@ -64,10 +64,10 @@ class TestParseGroup:
     
     def test_help_text(self, runner):
         result = runner.invoke(parse_group, ["--help"])
-        assert re.search(r"cv\s+parse cv", result.output, re.I) is not None
-        assert re.search(r"iv\s+parse iv", result.output, re.I) is not None
-        assert re.search(r"eqe\s+parse eqe", result.output, re.I) is not None
-        assert re.search(r"ts\s+Parse Test Structure", result.output, re.I) is not None
+        assert re.search(r"cv\s+Parse CV", result.output, re.I) is not None
+        assert re.search(r"iv\s+Parse IV", result.output, re.I) is not None
+        assert re.search(r"eqe\s+Parse EQE", result.output, re.I) is not None
+        assert re.search(r"ts\s+Parse TS", result.output, re.I) is not None
         assert len(result.output.split("\n")) == 13
 
 

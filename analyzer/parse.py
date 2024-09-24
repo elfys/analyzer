@@ -7,6 +7,7 @@ from typing import (
     Any,
     Callable,
     Generator,
+    Literal,
     TypedDict,
 )
 
@@ -20,9 +21,9 @@ from sqlalchemy.orm import (
 )
 
 from orm import (
+    AbstractChip,
     CVMeasurement,
     Carrier,
-    AbstractChip,
     ChipRepository,
     ChipState,
     EqeConditions,
@@ -54,10 +55,14 @@ class EPGData(TypedDict):
     data: list[pd.DataFrame]
 
 
-@click.command(name="iv", help="Parse IV measurements")
+@click.command(name="iv")
 @pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
 def parse_iv(ctx: AnalyzerContext, file_paths: tuple[Path]):
+    """
+    Parse IV measurements from FILE_PATHS files. The measurements are saved to the database and
+    processed files are renamed to FILENAME.parsed.
+    """
     instrument_id = InstrumentRepository(ctx.session).get_id(name="EPG")
     for file_path in file_paths:
         with parsing_file(file_path):
@@ -78,10 +83,14 @@ def parse_iv(ctx: AnalyzerContext, file_paths: tuple[Path]):
                 ctx.session.add(conditions)
 
 
-@click.command(name="cv", help="Parse CV measurements")
+@click.command(name="cv")
 @pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
 def parse_cv(ctx: AnalyzerContext, file_paths: tuple[Path]):
+    """
+    Parse CV measurements from FILE_PATHS files. The measurements are saved to the database and
+    processed files are renamed to FILENAME.parsed.
+    """
     for file_path in file_paths:
         with parsing_file(file_path):
             chip, _ = guess_chip_and_wafer(file_path.name, "cv")
@@ -94,10 +103,14 @@ def parse_cv(ctx: AnalyzerContext, file_paths: tuple[Path]):
             ctx.session.add_all(measurements)
 
 
-@click.command(name="ts", help="Parse Test Structure measurements")
+@click.command(name="ts")
 @pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
 def parse_ts(ctx: AnalyzerContext, file_paths: tuple[Path]):
+    """
+    Parse TS measurements from FILE_PATHS files. The measurements are saved to the database and
+    processed files are renamed to FILENAME.parsed.
+    """
     wafer_name = ask_wafer_name()
     wafer = WaferRepository(ctx.session).get_or_create(name=wafer_name)
     if not wafer.id:
@@ -117,10 +130,14 @@ def parse_ts(ctx: AnalyzerContext, file_paths: tuple[Path]):
             ctx.session.add(conditions)
 
 
-@click.command(name="eqe", help="Parse EQE measurements")
+@click.command(name="eqe")
 @pass_analyzer_context
 @click.argument("file_paths", default="./*.dat", callback=validate_files_glob)
 def parse_eqe(ctx: AnalyzerContext, file_paths: tuple[Path]):
+    """
+    Parse EQE measurements from FILE_PATHS files. The measurements are saved to the database and
+    processed files are renamed to FILENAME.parsed.
+    """
     instrument_map: dict[str, Instrument] = {i.name: i for i in ctx.session.query(Instrument).all()}
     
     for file_path in file_paths:
@@ -147,6 +164,11 @@ def parse_group():
 @contextlib.contextmanager
 @pass_analyzer_context
 def parsing_file(ctx: AnalyzerContext, file_path: Path):
+    """
+    Context manager that handles file parsing. It prints the filename, starts a nested transaction
+    and commits it if parsing was successful. If an exception is raised, the transaction is rolled
+    back and the user is prompted to continue or abort.
+    """
     print_filename_title(file_path)
     try:
         transaction = ctx.session.begin_nested()
@@ -194,8 +216,16 @@ def create_ts_conditions(filename: str, chip: AbstractChip) -> TsConditions:
 
 @pass_analyzer_context
 def guess_chip_and_wafer(
-    ctx: AnalyzerContext, filename: str, prefix: str
+    ctx: AnalyzerContext, filename: str, prefix: Literal["iv", "cv", "eqe"]
 ) -> tuple[AbstractChip, Wafer]:
+    """
+    Attempt to guess the chip and wafer names from the filename. If the names cannot be guessed,
+    the user is prompted to input them manually.
+    :param ctx:
+    :param filename: file name to parse
+    :param prefix: prefix for the file type
+    :return:
+    """
     matcher = re.compile(rf"^{prefix}\s+(?P<wafer>[\w\d]+)\s+(?P<chip>[\w\d-]+)(\s.*)?\..*$", re.I)
     match = matcher.match(filename)
     
@@ -255,7 +285,14 @@ def confirm_wafer_creation(ctx: AnalyzerContext, wafer):
 
 
 @pass_analyzer_context
-def ask_session(ctx: AnalyzerContext, timestamp: datetime) -> EqeSession:
+def ask_eqe_session(ctx: AnalyzerContext, timestamp: datetime) -> EqeSession:
+    """
+    Get or create an EQE session for the given timestamp. If no session is found, a new one is
+    created. If multiple sessions are found, the user is prompted to select one.
+    :param ctx:
+    :param timestamp:
+    :return:
+    """
     found_eqe_sessions: list[EqeSession] = (
         ctx.session.query(EqeSession).filter(EqeSession.date == timestamp.date()).all()
     )
@@ -296,6 +333,13 @@ def ask_chip_state(session: Session) -> ChipState:
 
 
 def parse_eqe_dat_file(file_path: Path) -> dict:
+    """
+    Parse EQE measurements from a .dat file. The file is expected to have a header with
+    conditions and a table with measurements. The conditions are extracted first and then the
+    measurements are read into a DataFrame.
+    :param file_path:
+    :return:
+    """
     patterns: tuple[tuple[str, str, Callable[[str], Any]], ...] = (
         (
             "datetime",
@@ -333,6 +377,14 @@ def parse_eqe_dat_file(file_path: Path) -> dict:
 
 
 def parse_epg_dat_file(file_path: Path, columns) -> EPGData:
+    """
+    Parse EPG measurements from a .dat file. The file is expected to have a header with conditions
+    and a table with measurements. The conditions are extracted first and then the measurements are
+    read into a DataFrame.
+    :param file_path:
+    :param columns:
+    :return:
+    """
     content = file_path.read_text()
     
     date_matcher = re.compile(r"^Date:\s*(?P<date>[\d/]+)\s*$", re.M | re.I)
@@ -442,6 +494,16 @@ def create_eqe_conditions(
     file_path: Path,
     chip: AbstractChip,
 ) -> EqeConditions:
+    """
+    Create EQE conditions from raw data and user input. The user is prompted to select an instrument
+    and add comments to the conditions. Default values are applied to REF chips.
+    :param ctx:
+    :param raw_data:
+    :param instrument_map:
+    :param file_path:
+    :param chip:
+    :return:
+    """
     existing = ctx.session.query(EqeConditions).filter_by(datetime=raw_data["datetime"]).all()
     if existing:
         existing_str = "\n".join([f"{i}. {repr(c)}" for i, c in enumerate(existing, start=1)])
@@ -484,12 +546,19 @@ def create_eqe_conditions(
     if "carrier" not in conditions_data and "carrier_id" not in conditions_data:
         conditions_data["carrier"] = ask_carrier(ctx.session)
     
-    conditions_data["session"] = ask_session(raw_data["datetime"])
+    conditions_data["session"] = ask_eqe_session(raw_data["datetime"])
     
     return EqeConditions(**conditions_data)
 
 
 def print_filename_title(path: Path, top_margin: int = 2, bottom_margin: int = 1):
+    """
+    Print a title for the file being processed.
+    :param path:
+    :param top_margin:
+    :param bottom_margin:
+    :return:
+    """
     if top_margin:
         click.echo("\n" * top_margin, nl=False)
     
@@ -502,6 +571,11 @@ def print_filename_title(path: Path, top_margin: int = 2, bottom_margin: int = 1
 
 
 def mark_file_as_parsed(file_path: Path):
+    """
+    Rename the file to indicate that it was parsed and saved to the database.
+    :param file_path:
+    :return:
+    """
     file_path = file_path.rename(file_path.with_suffix(file_path.suffix + ".parsed"))
     click.get_current_context().obj.logger.info(
         f"File was saved to database and renamed to '{file_path.name}'"

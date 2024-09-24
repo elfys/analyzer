@@ -14,7 +14,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import (
     Mapped,
-    joinedload,
     mapped_column,
     relationship,
     validates,
@@ -29,6 +28,7 @@ class ChipMetaclass(type(Base)):
     Metaclass for Chip classes that creates a set of new classes for every chip type in `chip_sizes` class dict.
     Read more about metaclasses here: https://realpython.com/python-metaclasses/
     """
+    
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
         if chip_sizes := dct.get("chip_sizes"):
@@ -297,16 +297,26 @@ class ChipRepository(AbstractRepository[AbstractChip], metaclass=ChipRepositoryM
         return chip
     
     def get_or_create_chips_for_wafer(self, chip_names, wafer_name) -> list[AbstractChip]:
-        from .wafer import (
-            Wafer,
-            WaferRepository,
-        )
-        wafer_repo = WaferRepository(self.session)
-        wafer = wafer_repo.get_or_create(name=wafer_name, query_options=joinedload(Wafer.chips))
-        existing_chip_names = {chip.name.upper() for chip in wafer.chips}
-        chip_names_to_create = {name.upper() for name in chip_names} - existing_chip_names
+        from .wafer import WaferRepository
         
+        chip_names = [name.upper() for name in chip_names]
+        wafer_repo = WaferRepository(self.session)
+        wafer = wafer_repo.get_or_create(name=wafer_name)
+        if wafer.id is not None:  # wafer already exists
+            existing_chips = self.get_all_by(
+                AbstractChip.wafer == wafer,
+                AbstractChip.name.in_(chip_names)
+            )
+            existing_chip_names = {chip.name for chip in existing_chips}
+            chip_names_to_create = set(chip_names) - existing_chip_names
+        else:
+            chip_names_to_create = chip_names
+            existing_chips = []
+        
+        created_chips = []
         for chip_name in chip_names_to_create:
-            self.create(name=chip_name, wafer=wafer)
-        chips_dict = {chip.name: chip for chip in wafer.chips}
-        return [chips_dict[chip_name] for chip_name in chip_names]
+            chip = self.create(name=chip_name, wafer=wafer)
+            created_chips.append(chip)
+
+        chips_dict = {chip.name: chip for chip in created_chips + existing_chips}
+        return [chips_dict[chip_name] for chip_name in chip_names]  # preserve order

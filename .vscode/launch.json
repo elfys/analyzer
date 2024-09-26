@@ -5,13 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Summary iv",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "analyzer",
+            "args": ["summary", "iv", "-w", "CA14", "-t", "X"]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "measure.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["iv", "--config", "measure/single.yaml", "-w", "TEST", "-s", "1", "-n", "X1033"]
+            "args": [
+                "iv",
+                "--config",
+                "measure/single.yaml",
+                "-w",
+                "TEST",
+                "-s",
+                "1",
+                "-n",
+                "X1033"
+            ]
         },
         {
             "name": "Parse dat files",
@@ -20,7 +37,9 @@
             "program": "analyzer.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["parse"]
+            "args": [
+                "parse"
+            ]
         },
         {
             "name": "Parse cv dat files",
@@ -29,7 +48,11 @@
             "program": "analyzer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["parse", "cv", ".\\data\\*.dat"]
+            "args": [
+                "parse",
+                "cv",
+                ".\\data\\*.dat"
+            ]
         },
         {
             "name": "Parse Test Structure dat files",
@@ -38,7 +61,11 @@
             "program": "analyzer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["parse", "ts", ".\\data\\*.dat"]
+            "args": [
+                "parse",
+                "ts",
+                ".\\data\\*.dat"
+            ]
         },
         {
             "name": "Summarize cv",
@@ -47,7 +74,10 @@
             "program": "analyzer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["summary", "cv"]
+            "args": [
+                "summary",
+                "cv"
+            ]
         },
         {
             "name": "Summarize eqe",
@@ -56,7 +86,12 @@
             "program": "analyzer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["summary", "eqe", "--session", "2023-01-05"]
+            "args": [
+                "summary",
+                "eqe",
+                "--session",
+                "2023-01-05"
+            ]
         },
         {
             "name": "help",
@@ -65,7 +100,10 @@
             "program": "analyzer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["summary", "--help"]
+            "args": [
+                "summary",
+                "--help"
+            ]
         },
         {
             "name": "Measure IV guard-ring",
@@ -74,7 +112,17 @@
             "module": "measure",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["-c", ".\\measure\\iv-guard-ring.yaml", "iv", "-w", "Test", "-s", "1", "-n", "X0101"]
+            "args": [
+                "-c",
+                ".\\measure\\iv-guard-ring.yaml",
+                "iv",
+                "-w",
+                "Test",
+                "-s",
+                "1",
+                "-n",
+                "X0101"
+            ]
         },
         {
             "name": "Measure IV matrix",
@@ -83,7 +131,20 @@
             "module": "measure",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--log-level", "debug", "-c", ".\\measure\\iv-matrix.yaml", "iv", "--auto", "-w", "TEST", "-s", "1", "-n", "X0101"]
+            "args": [
+                "--log-level",
+                "debug",
+                "-c",
+                ".\\measure\\iv-matrix.yaml",
+                "iv",
+                "--auto",
+                "-w",
+                "TEST",
+                "-s",
+                "1",
+                "-n",
+                "X0101"
+            ]
         },
         {
             "name": "Measure matrix",

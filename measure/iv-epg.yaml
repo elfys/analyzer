@@ -66,7 +66,7 @@ setups:
       - ":PAGE:MEAS:CONS:SMU3 0"  # sets the constant SOURCE value of SMU3 for sweep measurements
 
       # Integration time
-      - ":PAGE:MEAS:MSET:ITIM SHORT"
+      - ":PAGE:MEAS:MSET:ITIM LONG"
 
 
       - ":PAGE:DISP:LIST 'V3','I1','I3'"  # selects the variable names for LIST display
@@ -87,7 +87,7 @@ setups:
             message: Current leakage is too high. Check if there is a light exposure.
             abs: true
       condition_kwargs:
-        int_time: SHORT
+        int_time: LONG
 
   - name: 20v sweep
     instrument:
@@ -112,7 +112,7 @@ setups:
       #      - ":PAGE:MEAS:DEL 0"  # sets the DELAY TIME of SMU.
 
       # Integration time
-      - ":PAGE:MEAS:MSET:ITIM SHORT"
+      - ":PAGE:MEAS:MSET:ITIM LONG"
 
       - ":PAGE:MEAS:CONS:SMU1 0"  # sets the constant SOURCE value of SMU1 for sweep measurements
       - ":PAGE:MEAS:CONS:SMU3 0"  # sets the constant SOURCE value of SMU3 for sweep measurements
@@ -125,4 +125,4 @@ setups:
             value: !!float 5e-3
             message: Current leakage is too low. Check if there is a good contact.
       condition_kwargs:
-        int_time: SHORT
+        int_time: LONG

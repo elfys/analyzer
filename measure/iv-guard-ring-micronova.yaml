@@ -121,7 +121,7 @@ setups:
       #      - ":PAGE:MEAS:HTIM 0"  # sets the HOLD TIME of sweep measurement
       #      - ":PAGE:MEAS:DEL 0"  # sets the DELAY TIME of SMU.
       # Integration time
-      - ":PAGE:MEAS:MSET:ITIM SHORT"
+      - ":PAGE:MEAS:MSET:ITIM MED"
       - ":PAGE:MEAS:CONS:SMU1:COMP 0.1"
       - ":PAGE:MEAS:CONS:SMU2:COMP 0.1"
 

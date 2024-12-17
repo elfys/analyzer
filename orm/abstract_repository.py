@@ -1,7 +1,11 @@
+from typing import TypeVar, Generic
 from .base import Base
 
 
-class AbstractRepository[Model: Base]:
+# class AbstractRepository[Model: Base]:
+Model = TypeVar('Model', bound=Base)
+
+class AbstractRepository(Generic[Model]):
     model: type[Model]
     
     def __init__(self, session):

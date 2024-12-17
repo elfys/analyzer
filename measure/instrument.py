@@ -1,6 +1,6 @@
 import logging
 from random import random
-from typing import cast
+from typing import cast, TypeAlias
 
 import click
 import pyvisa
@@ -118,7 +118,7 @@ class TemperatureInstrument:
         return self.sensor.get_currentValue()
 
 
-type InstrumentsTypes = PyVisaInstrument | TemperatureInstrument
+InstrumentsTypes: TypeAlias = PyVisaInstrument | TemperatureInstrument
 
 
 class InstrumentFactory:

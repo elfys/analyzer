@@ -1,13 +1,16 @@
 from functools import wraps
 from typing import (
     Callable,
+    TypeVar,
     cast,
 )
 
 import click
 
+F = TypeVar('F', bound=Callable)
 
-def remember_choice[F: Callable](message: str):
+#def remember_choice[F: Callable](message: str):
+def remember_choice(message: str):
     def decorate(fn: F) -> F:
         @wraps(fn)
         def wrapper(*args, **kwargs):

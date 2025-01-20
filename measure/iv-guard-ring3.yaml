@@ -1,0 +1,288 @@
+# Contains a set of instructions for a single chip IV measurement on Keithley SMU 2636 (Innopoli)
+
+instruments:
+  temperature:
+    resource: "PT100MK1-1DCBA1.temperature"
+    name: "Temperature sensor"
+    kind: "temperature"
+  main:
+    resource: "GPIB0::1::INSTR"
+    name: "Keithley SMU 2636 (Innopoli)"
+    kind: "pyvisa"
+    invert_voltage: false
+    kwargs:
+      timeout: 30000
+
+
+measure:
+  - command: "node[1].smub.trigger.initiate()"
+    type: "write"
+  - command: "node[2].smua.trigger.initiate()"
+    type: "write"
+  - command: "node[1].smua.trigger.initiate()"
+    type: "write"
+  - command: "node[1].tsplink.trigger[1].assert()"
+    type: "write"
+  - command: "waitcomplete()"
+    type: "write"
+  - command: "node[1].smua.source.output = smua.OUTPUT_OFF"
+    type: "write"
+  - command: "node[1].smub.source.output = smua.OUTPUT_OFF"
+    type: "write"
+  - command: "node[2].smua.source.output = smua.OUTPUT_OFF"
+    type: "write"
+  - command: "printbuffer(1, node[1].smub.nvbuffer2.n, node[1].smub.nvbuffer2.readings)"
+    type: "query_csv_values"
+    name: anode_current
+  - command: "printbuffer(1, node[1].smua.nvbuffer1.n, node[1].smua.nvbuffer1.sourcevalues)"
+    type: "query_csv_values"
+    name: voltage_input
+  - command: "printbuffer(1, node[2].smua.nvbuffer1.n, node[2].smua.nvbuffer1.readings)"
+    type: "query_csv_values"
+    name: guard_current
+
+chips:
+  - voltage_input:
+    anode_current:
+    guard_current:
+
+
+setups:
+  - name: 0.01v points
+    instrument:
+      - "*CLS"
+      - "tsplink.reset()"
+      - "reset()" # resets commands to their default settings
+      - "vlist = {0.01, 0.008, 0.006, 0.004, 0.002, 0, -0.002, -0.004, -0.006, -0.008, -0.01}" # sets the voltage list
+      # - "vlist = {-2,-1,0,5,10,20,30,40,50,60,70,80,90,100}"
+      # - "vlist = {-0.01, 0, 0.01}"
+      - "points = table.getn(vlist)" # counts the point
+      # configures settings for cathode channel
+      - "node[1].smua.source.func = node[1].smua.OUTPUT_DCVOLTS" # selects the voltage source function
+      - "node[1].smua.source.autorangev = node[1].smua.AUTORANGE_ON" # enables voltage source autorange
+      - "node[1].smua.source.limiti = 10e-3" # compliance limit
+      - "node[1].smua.source.output = node[1].smua.OUTPUT_ON" # turn on the output in preparation for the sweep
+      - "node[1].smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
+      - "node[1].smua.measure.autozero = node[1].smua.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
+      - "node[1].smua.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
+      - "node[1].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      # configures settings for anode channel
+      - "node[1].smub.source.func = node[1].smub.OUTPUT_DCVOLTS" # selects the voltage source function
+      - "node[1].smub.source.levelv = 0" # sets the voltage to constant zero
+      - "node[1].smub.source.limiti = 10e-3" # compliance limit
+      - "node[1].smub.source.output = node[1].smub.OUTPUT_ON" # turn on the output in preparation for the sweep
+      - "node[1].smub.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
+      - "node[1].smub.measure.autozero = node[1].smub.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
+      - "node[1].smub.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
+      - "node[1].smub.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      # configures settings for guard ring channel
+      - "node[2].smua.source.func = node[2].smua.OUTPUT_DCVOLTS" # selects the voltage source function
+      - "node[2].smua.source.levelv = 0" # sets the voltage to constant zero
+      - "node[2].smua.source.limiti = 10e-3" # compliance limit
+      - "node[2].smua.source.output = node[2].smua.OUTPUT_ON" # turn on the output in preparation for the sweep
+      - "node[2].smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
+      - "node[2].smua.measure.autozero = node[2].smua.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
+      - "node[2].smua.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
+      - "node[2].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+
+      # configures tsp-link triggers for both nodes
+      - "node[1].tsplink.trigger[1].clear()" # clears the event detector
+      - "node[1].tsplink.trigger[1].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[1].tsplink.trigger[2].clear()" # clears the event detector
+      - "node[1].tsplink.trigger[2].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[1].tsplink.trigger[3].clear()" # clears the event detector
+      - "node[1].tsplink.trigger[3].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      
+      - "node[2].tsplink.trigger[1].clear()" # clears the event detector
+      - "node[2].tsplink.trigger[1].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[2].tsplink.trigger[2].clear()" # clears the event detector
+      - "node[2].tsplink.trigger[2].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[2].tsplink.trigger[3].clear()" # clears the event detector
+      - "node[2].tsplink.trigger[3].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+     
+      # Sets the sweep timer and configures the trigger model
+      # Timer 1 is sued to trigger the change of bias
+      - "node[1].trigger.timer[1].reset()" # resets the timer
+      - "node[1].trigger.timer[1].delay = 0.5" # sets wait time before the first point of the sweep
+      - "node[1].trigger.timer[1].stimulus = node[1].trigger.blender[1].EVENT_ID" # timer is activated once blender event occurs, i.e. all SMUs are done with measurement
+      - "node[1].trigger.timer[1].count = points" # timer triggers as many times as there are voltage points in sweep
+      - "node[1].trigger.timer[1].passthrough = false" # triggers are passed through immediately
+      # Timer 2 is used to trigger the measurements after bias is set
+      - "node[1].trigger.timer[2].reset()" # resets timer
+      - "node[1].trigger.timer[2].stimulus = node[1].smua.trigger.SOURCE_COMPLETE_EVENT_ID" #timer is triggered when bias is changed
+      - "node[1].trigger.timer[2].passthrough = false" # triggers are not immediately passed through but only after delay
+      - "node[1].trigger.timer[2].delay = 0.5" # delay before first measurement point
+      - "node[1].trigger.timer[2].count = 1" # 1 measurement at each bias point
+
+      # Sets up event blender that triggers an event once all 3 SMUs are ready with their measurement
+      - "node[1].trigger.blender[1].reset()" # resets event blender
+      - "node[1].trigger.blender[1].orenable = false" # sets event blender into AND mode
+      - "node[1].trigger.blender[1].stimulus[1] = node[1].smua.trigger.MEASURE_COMPLETE_EVENT_ID" # first input for blender
+      - "node[1].trigger.blender[1].stimulus[2] = node[1].smub.trigger.MEASURE_COMPLETE_EVENT_ID" # second input for blender
+      - "node[1].trigger.blender[1].stimulus[3] = node[1].tsplink.trigger[3].EVENT_ID" # third input for blender
+
+      # Sets up stimulus for each tsp link line
+      - "node[1].tsplink.trigger[1].stimulus = node[1].trigger.timer[1].EVENT_ID" # tsp-link line 1 is triggered when event occurs in timer 1 (bias is changed)
+      - "node[1].tsplink.trigger[2].stimulus = node[1].trigger.timer[2].EVENT_ID" # tsp-link line 2 is triggered when event occurs in timer 2 (measurement is done)
+      - "node[2].tsplink.trigger[3].stimulus = node[2].smua.trigger.MEASURE_COMPLETE_EVENT_ID" # tsp-link line 3 is triggered when node2 smua is done with measurement
+      # SMU 1A Buffer configuration
+      - "node[1].smua.nvbuffer1.clear()" # clear the buffer
+      - "node[1].smua.nvbuffer1.appendmode = 1" # saves measurement to buffer
+      - "node[1].smua.nvbuffer1.collectsourcevalues = 1 " # source values are stored with readings in the buffer
+      - "node[1].smua.nvbuffer1.collecttimestamps = 1 " # time stamps of all events are stored with readings in the buffer
+
+      - "node[1].smua.trigger.source.listv(vlist)" # sweeps  SMU 1A through vlist
+      - "node[1].smua.trigger.source.action = node[1].smua.ENABLE" # enables the source action
+      - "node[1].smua.trigger.endsweep.action = node[1].smua.SOURCE_HOLD" # keeps the bias on after it has been changed
+      - "node[1].smua.trigger.measure.i(node[1].smua.nvbuffer1)" # stores current readings during the sweep in buffer
+      - "node[1].smua.trigger.measure.action = node[1].smua.ENABLE" # makes measurement during the sweep
+      - "node[1].smua.trigger.measure.stimulus = node[1].tsplink.trigger[2].EVENT_ID" # identifies events generated by timer 2
+      - "node[1].smua.trigger.count = points" # number of points to output
+
+      # SMU 1B Buffer configuration
+      - "node[1].smub.nvbuffer2.clear()" # clear the buffer
+      - "node[1].smub.nvbuffer2.appendmode = 1" # saves measurement to buffer
+      - "node[1].smub.nvbuffer2.collecttimestamps = 1 " # time stamps of all events are stored with readings in the buffer
+      - "node[1].smub.trigger.measure.i(node[1].smub.nvbuffer2)" # stores current readings during the sweep in buffer
+      - "node[1].smub.trigger.measure.action = node[1].smub.ENABLE" # makes measurement during the sweep
+      - "node[1].smub.trigger.measure.stimulus = node[1].tsplink.trigger[2].EVENT_ID" # identifies events generated by timer 2
+      - "node[1].smub.trigger.count = points" # number of points to output
+
+      # SMU 2A Buffer configuration
+      - "node[2].smua.nvbuffer1.clear()" # clear the buffer
+      - "node[2].smua.nvbuffer1.appendmode = 1" # saves measurement to buffer
+      - "node[2].smua.nvbuffer1.collecttimestamps = 1 " # time stamps of all events are stored with readings in the buffer
+      - "node[2].smua.trigger.measure.i(node[2].smua.nvbuffer1)" # stores current readings during the sweep in buffer
+      - "node[2].smua.trigger.measure.action = node[2].smua.ENABLE" # makes measurement during the sweep
+      - "node[2].smua.trigger.measure.stimulus = node[2].tsplink.trigger[2].EVENT_ID" # identifies events generated by timer 2
+      - "node[2].smua.trigger.count = points" # number of points to output
+
+
+    program:
+      condition_kwargs:
+        int_time: LONG # depends on smua.measure.nplc value. 0.01 - fast (SHORT), 0.1 - med (MED), 1 - normal (LONG)
+
+  - name: 100v points
+    instrument:
+      - "*CLS"
+      - "tsplink.reset()"
+      - "reset()" # resets commands to their default settings
+      #- "vlist = {100,90,80,70,60,50,40,30,20,10,5,1,0,-1}" # sets the voltage list
+      # - "vlist = {-1,0,6,10,12,15,20}"
+      - "vlist = {-1,0,5,10,20,30,40,50,60,70,80,90,100}"
+      - "points = table.getn(vlist)" # counts the point
+
+      # configures settings for cathode channel
+      - "node[1].smua.source.func = node[1].smua.OUTPUT_DCVOLTS" # selects the voltage source function
+      - "node[1].smua.source.autorangev = node[1].smua.AUTORANGE_ON" # enables voltage source autorange
+      - "node[1].smua.source.autorangei = node[1].smua.AUTORANGE_ON"
+      - "node[1].smua.source.limiti = 1e-2" # compliance limit
+      - "node[1].smua.source.output = node[1].smua.OUTPUT_ON" # turn on the output in preparation for the sweep
+      - "node[1].smua.measure.nplc = 10" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
+      - "node[1].smua.measure.autozero = node[1].smua.AUTOZERO_AUTO" # disables automatic updates to the internal reference measurements of the instrument
+      - "node[1].smua.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
+      - "node[1].smua.measure.delay = 0.45" # timer is used for delay, so this delay is set to 0
+      # configures settings for anode channel
+      - "node[1].smub.source.func = node[1].smub.OUTPUT_DCVOLTS" # selects the voltage source function
+      - "node[1].smub.source.levelv = 0" # sets the voltage to constant zero
+      - "node[1].smub.source.limiti = 1e-2" # compliance limit
+      - "node[1].smub.source.autorangei = node[1].smub.AUTORANGE_ON"
+      - "node[1].smub.source.output = node[1].smub.OUTPUT_ON" # turn on the output in preparation for the sweep
+      - "node[1].smub.measure.nplc = 10" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
+      - "node[1].smub.measure.autozero = node[1].smub.AUTOZERO_AUTO" # disables automatic updates to the internal reference measurements of the instrument
+      - "node[1].smub.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
+      - "node[1].smub.measure.delay = 0.45" # timer is used for delay, so this delay is set to 0
+      # configures settings for guard ring channel
+      - "node[2].smua.source.func = node[2].smua.OUTPUT_DCVOLTS" # selects the voltage source function
+      - "node[2].smua.source.levelv = 0" # sets the voltage to constant zero
+      - "node[2].smua.source.autorangei = node[2].smua.AUTORANGE_ON"
+      - "node[2].smua.source.limiti = 1e-2" # compliance limit
+      - "node[2].smua.source.output = node[2].smua.OUTPUT_ON" # turn on the output in preparation for the sweep
+      - "node[2].smua.measure.nplc = 10" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
+      - "node[2].smua.measure.autozero = node[2].smua.AUTOZERO_AUTO" # disables automatic updates to the internal reference measurements of the instrument
+      - "node[2].smua.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
+      - "node[2].smua.measure.delay = 0.45" # timer is used for delay, so this delay is set to 0
+
+
+      # configures tsp-link triggers for both nodes
+      - "node[1].tsplink.trigger[1].clear()" # clears the event detector
+      - "node[1].tsplink.trigger[1].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[1].tsplink.trigger[2].clear()" # clears the event detector
+      - "node[1].tsplink.trigger[2].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[1].tsplink.trigger[3].clear()" # clears the event detector
+      - "node[1].tsplink.trigger[3].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      
+      - "node[2].tsplink.trigger[1].clear()" # clears the event detector
+      - "node[2].tsplink.trigger[1].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[2].tsplink.trigger[2].clear()" # clears the event detector
+      - "node[2].tsplink.trigger[2].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+      - "node[2].tsplink.trigger[3].clear()" # clears the event detector
+      - "node[2].tsplink.trigger[3].mode = tsplink.TRIG_FALLING" # detects falling-edge triggers
+     
+      # Sets the sweep timer and configures the trigger model
+      # Timer 1 is used to trigger the change of bias
+      - "node[1].trigger.timer[1].reset()" # resets the timer
+      - "node[1].trigger.timer[1].delay = 1" # sets wait time before the first point of the sweep
+      - "node[1].trigger.timer[1].stimulus = node[1].trigger.blender[1].EVENT_ID" # timer is activated once blender event occurs, i.e. all SMUs are done with measurement
+      - "node[1].trigger.timer[1].count = points" # timer triggers as many times as there are voltage points in sweep
+      - "node[1].trigger.timer[1].passthrough = false" # triggers are passed through immediately
+      # Timer 2 is used to trigger the measurements after bias is set
+      - "node[1].trigger.timer[2].reset()" # resets timer
+      - "node[1].trigger.timer[2].stimulus = node[1].smua.trigger.SOURCE_COMPLETE_EVENT_ID" #timer is triggered when bias is changed
+      - "node[1].trigger.timer[2].passthrough = false" # triggers are not immediately passed through but only after delay
+      - "node[1].trigger.timer[2].delay = 1" # delay before first measurement point
+      - "node[1].trigger.timer[2].count = 1" # 1 measurement at each bias point
+
+      # Sets up event blender that triggers an event once all 3 SMUs are ready with their measurement
+      - "node[1].trigger.blender[1].reset()" # resets event blender
+      - "node[1].trigger.blender[1].orenable = false" # sets event blender into AND mode
+      - "node[1].trigger.blender[1].stimulus[1] = node[1].smua.trigger.MEASURE_COMPLETE_EVENT_ID" # first input for blender
+      - "node[1].trigger.blender[1].stimulus[2] = node[1].smub.trigger.MEASURE_COMPLETE_EVENT_ID" # second input for blender
+      - "node[1].trigger.blender[1].stimulus[3] = node[1].tsplink.trigger[3].EVENT_ID" # third input for blender
+
+      # Sets up stimulus for each tsp link line
+      - "node[1].tsplink.trigger[1].stimulus = node[1].trigger.timer[1].EVENT_ID" # tsp-link line 1 is triggered when event occurs in timer 1 (bias is changed)
+      - "node[1].tsplink.trigger[2].stimulus = node[1].trigger.timer[2].EVENT_ID" # tsp-link line 2 is triggered when event occurs in timer 2 (measurement is done)
+      - "node[2].tsplink.trigger[3].stimulus = node[2].smua.trigger.MEASURE_COMPLETE_EVENT_ID" # tsp-link line 3 is triggered when node2 smua is done with measurement
+      # SMU 1A Buffer configuration
+      - "node[1].smua.nvbuffer1.clear()" # clear the buffer
+      - "node[1].smua.nvbuffer1.appendmode = 1" # saves measurement to buffer
+      - "node[1].smua.nvbuffer1.collectsourcevalues = 1 " # source values are stored with readings in the buffer
+      - "node[1].smua.nvbuffer1.collecttimestamps = 1 " # time stamps of all events are stored with readings in the buffer
+
+      - "node[1].smua.trigger.source.listv(vlist)" # sweeps  SMU 1A through vlist
+      - "node[1].smua.trigger.source.action = node[1].smua.ENABLE" # enables the source action
+      - "node[1].smua.trigger.endsweep.action = node[1].smua.SOURCE_HOLD" # keeps the bias on after it has been changed
+      - "node[1].smua.trigger.measure.i(node[1].smua.nvbuffer1)" # stores current readings during the sweep in buffer
+      - "node[1].smua.trigger.measure.action = node[1].smua.ENABLE" # makes measurement during the sweep
+      - "node[1].smua.trigger.measure.stimulus = node[1].tsplink.trigger[2].EVENT_ID" # identifies events generated by timer 2
+      - "node[1].smua.trigger.count = points" # number of points to output
+
+      # SMU 1B Buffer configuration
+      - "node[1].smub.nvbuffer2.clear()" # clear the buffer
+      - "node[1].smub.nvbuffer2.appendmode = 1" # saves measurement to buffer
+      - "node[1].smub.nvbuffer2.collecttimestamps = 1 " # time stamps of all events are stored with readings in the buffer
+      - "node[1].smub.trigger.measure.i(node[1].smub.nvbuffer2)" # stores current readings during the sweep in buffer
+      - "node[1].smub.trigger.measure.action = node[1].smub.ENABLE" # makes measurement during the sweep
+      - "node[1].smub.trigger.measure.stimulus = node[1].tsplink.trigger[2].EVENT_ID" # identifies events generated by timer 2
+      - "node[1].smub.trigger.count = points" # number of points to output
+
+      # SMU 2A Buffer configuration
+      - "node[2].smua.nvbuffer1.clear()" # clear the buffer
+      - "node[2].smua.nvbuffer1.appendmode = 1" # saves measurement to buffer
+      - "node[2].smua.nvbuffer1.collecttimestamps = 1 " # time stamps of all events are stored with readings in the buffer
+      - "node[2].smua.trigger.measure.i(node[2].smua.nvbuffer1)" # stores current readings during the sweep in buffer
+      - "node[2].smua.trigger.measure.action = node[2].smua.ENABLE" # makes measurement during the sweep
+      - "node[2].smua.trigger.measure.stimulus = node[2].tsplink.trigger[2].EVENT_ID" # identifies events generated by timer 2
+      - "node[2].smua.trigger.count = points" # number of points to output
+    
+    
+    program:
+      validation:
+        anode_current[-13]:
+          min:
+            abs: true
+            value: !!float 1e-3
+            message: Current leakage is too low. Check if there is a good contact.
+      condition_kwargs:
+        int_time: LONG

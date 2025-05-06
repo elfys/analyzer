@@ -87,6 +87,7 @@ class SimpleChip(AbstractChip):
         "A": (1.69, 1.69),
         "B": (1.69, 1.69),
         "C": (1.23, 1.23),
+        "CM": (0.76, 0.76),
         "D": (1.23, 1.23),
         "E": (1.806, 1.806),
         "F": (2.56, 1.25),
@@ -110,16 +111,16 @@ class SimpleChip(AbstractChip):
     @property
     def x_coordinate(self):
         digits = re.sub(rf'^{self.type}', '', self.name)
-        if not digits.isdigit() or len(digits) != 4:
+        if not digits.isdigit() or len(digits) %2 != 0:
             raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
-        return int(digits[2:])
+        return int(digits[(len(digits)//2):])
     
     @property
     def y_coordinate(self):
         digits = re.sub(rf'^{self.type}', '', self.name)
-        if not digits.isdigit() or len(digits) != 4:
+        if not digits.isdigit() or len(digits) %2 != 0:
             raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
-        return int(digits[:2])
+        return int(digits[:(len(digits)//2)])
     
     @property
     def width(self):

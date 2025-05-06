@@ -59,7 +59,7 @@ class SheetsIVData[T](TypedDict):
     temperatures: T
 
 
-@click.command(name="iv")
+@click.command(name="iva")
 @pass_analyzer_context
 @click.option(
     "-t", "--chips-type", help="Type of the chips to analyze.",
@@ -98,7 +98,7 @@ class SheetsIVData[T](TypedDict):
     type=click.DateTime(formats=date_formats),
     help=f"Include measurements after (inclusive) provided date and time. {date_formats_help}",
 )
-def summary_iv(
+def summary_iva(
     ctx: AnalyzerContext,
     chips_type: str | None,
     wafer: Wafer,
@@ -142,12 +142,16 @@ def summary_iv(
         ctx.logger.warning("No measurements found.")
         return
     
-    chips = {c.chip for c in conditions}
+    # Creates a list of chips where duplicates (same chip measured multiple times) are automatically removed
+    # chips = {c.chip for c in conditions}
+
+    # This version preserves duplicates 
+    chips = [c.chip for c in conditions]
     measurements = get_iv_measurements(conditions)
     sheets_data = get_sheets_iv_data(measurements, chips)
     
     summary_voltages = list(sheets_data["anode"].columns.intersection(
-        [Decimal(v) for v in {"-1", "0.01", "5", "6", "10", "20", "100"}]
+        [Decimal(v) for v in {"-1", "0.01", "5", "6", "10", "20"}]
     ))
     thresholds = get_thresholds(ctx.session, "IV")
     
@@ -208,10 +212,16 @@ def get_iv_measurements(conditions: list[IvConditions]) -> list[IVMeasurement]:
     
     # get all measurements, deduplicated by voltage and chip name
     # latest measurements from `sorted_conditions` will be selected
-    measurements = (
-        (m.voltage_input, c.chip_id, m) for c in sorted_conditions for m in c.measurements)
-    measurements_dict = {(v, c): m for v, c, m in measurements}
-    return list(measurements_dict.values())
+    #measurements = (
+    #     (m.voltage_input, c.chip_id, m) for c in sorted_conditions for m in c.measurements)
+    #measurements_dict = {(v, c): m for v, c, m in measurements}
+    #return list(measurements_dict.values())
+
+    # This version gets all measurements without removing duplicates
+    measurements = [
+    m for c in sorted_conditions for m in c.measurements
+    ]
+    return measurements
 
 
 def save_iv_summary_to_excel(
@@ -228,6 +238,7 @@ def save_iv_summary_to_excel(
     summary_df.insert(
         0, "Temperature",
         cast(pd.Series, sheets_data["temperatures"]["Temperature"].apply(lambda x: f"{x:.2f}")))
+    # summary_df.insert(0, "chip state", cast(pd.Series, sheets_data["chip_state_id"].astype(int)))
     rules = {
         "lessThan": PatternFill(bgColor="ee9090", fill_type="solid"),  # red, failed
         "greaterThanOrEqual": PatternFill(bgColor="90ee90", fill_type="solid"),  # green, ok
@@ -238,22 +249,27 @@ def save_iv_summary_to_excel(
         'guard_ring': "Guard ring current",
         'anode_raw': "I1 anode raw",
         'temperatures': None,
+        'chip_state_id': "chip state",
     }
     
     with pd.ExcelWriter(file_name) as writer:
         summary_df.to_excel(writer, sheet_name="Summary")
-        apply_conditional_formatting(
-            writer.book["Summary"],
-            rules,
-            thresholds,
-        )
+        #apply_conditional_formatting(
+         #   writer.book["Summary"],
+          #  rules,
+           # thresholds,
+        #)
         for df_name, df in cast(Iterable[tuple[str, pd.DataFrame]], sheets_data.items()):
             if (sheet_name := sheet_names[df_name]) is None:
                 continue
             df = df.dropna(axis=1, how="all")
             if df.empty:
                 continue
-            df = df.rename(columns=float)
+            # Not sure why here all values are converted to float
+            # Seems to work fine also with convert_dtypes which tries to convert all values to their optimal datatype
+            #df = df.rename(column=float)
+            df = df.convert_dtypes()
+            df = df.sort_values(by=['Chip Name'])
             df.to_excel(writer, sheet_name=sheet_name)
         
         info.to_excel(writer, sheet_name="Info")
@@ -268,39 +284,90 @@ def get_sheets_iv_data(
     """
     Extract IV measurements data from given sequence of measurements into separate dataframes.
     """
-    chip_names = sorted({c.name for c in chips})
-    chip_index = pd.Index(chip_names)
+    # Generates index for dataframes based on different chip names. Thus duplicate measurements are removed  
+    # chip_names = sorted([c.name for c in chips])
+    # chip_index = pd.Index(chip_names)
+    # Generates the index instead from measurement times. Therefore duplicate measurements from same chip are not removed
+    datetimes = sorted([m.conditions.datetime for m in measurements])
+    datetime_index = pd.Index(datetimes).drop_duplicates()
+
+    chip_name_map = {m.conditions.datetime: m.conditions.chip.name for m in measurements}
+    chip_state_map = {m.conditions.datetime: m.conditions.chip_state.name for m in measurements}
+    # Creates a new DataFrame (table). Sets row labels according to chip_index and creates
+    # two columns called Temperature and num_of_measurements. Defines data type as float32 and
+    # initializes all values to 0.
+    # temps_df = pd.DataFrame(
+    #    0, dtype="float32", index=chip_index,
+    #    columns=pd.Index(['Temperature', 'num_of_measurements']))
     temps_df = pd.DataFrame(
-        0, dtype="float32", index=chip_index,
+        0, dtype="float32", index=datetime_index,
         columns=pd.Index(['Temperature', 'num_of_measurements']))
-    empty_df = pd.DataFrame(dtype="float32", index=chip_index)
+
+    #states_df = pd.DataFrame(dtype="int8", index=chip_index)
+    states_df = pd.DataFrame(dtype="int8", index=datetime_index)
+
+    # Creates an empty DataFrame with data type float32 and row labels according to chip_index.
+    # Same empty DataFrame is then copied for all measurement data variables 
+    #empty_df = pd.DataFrame(dtype="float32", index=chip_index)
+    empty_df = pd.DataFrame(dtype="float32", index=datetime_index)
     anode_df = empty_df.copy()
     raw_anode_df = empty_df.copy()
     cathode_df = empty_df.copy()
     guard_ring_df = empty_df.copy()
+    # Flag indicating if found measurements contain current data that is not temperature corrected
     has_uncorrected_current = False
+
+
+    # Loops through each selected row from iv_data table (measurements) and adds the data to DataFrames
+    # Shows progress of the action with a progressbar
     with click.progressbar(measurements, label="Processing measurements...") as progress:
         for measurement in progress:
-            cell_location = (measurement.conditions.chip.name, measurement.voltage_input)
+            # Defines the correct row and column of the data based on chip name and bias voltage 
+            #cell_location = (measurement.conditions.chip.name,  measurement.voltage_input)
+            # Uses measurement datetime instead as row label
+            cell_location = (measurement.conditions.datetime,  measurement.voltage_input)
             if measurement.anode_current_corrected is None:
                 has_uncorrected_current = True
             anode_df.loc[cell_location] = measurement.get_anode_current_value()
             raw_anode_df.loc[cell_location] = measurement.anode_current
             cathode_df.loc[cell_location] = measurement.cathode_current
             guard_ring_df.loc[cell_location] = measurement.guard_current
-            
+            # Sums all the temperature values found for each measurement and keeps track of the number of summed values
+            # This information is later used to calculate average tempreature during one measurement
+            # (temperature is measured for each sweep, so several values might exist for one measurement)
             temps_df.loc[cell_location[0], ['Temperature', 'num_of_measurements']] += \
                 np.array([measurement.conditions.temperature, 1.0], dtype=np.float32)
+            # Stores chip states to be used later
+            states_df.loc[cell_location] = measurement.conditions.chip_state_id
     if has_uncorrected_current:
         ctx.logger.warning(
             "Some current measurements are not corrected by temperature."
-        )
+        )    
     temps_df['Temperature'] /= temps_df['num_of_measurements']
     temps_df.drop(columns='num_of_measurements', inplace=True)
+
+    def add_chip_name_column(df: pd.DataFrame) -> pd.DataFrame:
+        #df['Chip Name'] = df.index.get_level_values(0).map(chip_name_map)
+        df.insert(0, 'Chip State', df.index.get_level_values(0).map(chip_state_map))
+        df.insert(0, 'Chip Name', df.index.get_level_values(0).map(chip_name_map))
+        #cols = df.columns.tolist()
+        #cols = cols[-1:] + cols[:-1]  # Move 'Chip Name' to the front
+        return df
+
+    anode_df = add_chip_name_column(anode_df)
+    raw_anode_df = add_chip_name_column(raw_anode_df)
+    cathode_df = add_chip_name_column(cathode_df)
+    guard_ring_df = add_chip_name_column(guard_ring_df)
+    temps_df = add_chip_name_column(temps_df)
+    states_df = add_chip_name_column(states_df)
+
+
+
     return {
         "anode": anode_df,
         "anode_raw": raw_anode_df,
         "cathode": cathode_df,
         "guard_ring": guard_ring_df,
         "temperatures": temps_df,
+        "chip_state_id": states_df,
     }

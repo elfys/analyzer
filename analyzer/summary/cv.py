@@ -135,7 +135,7 @@ def summary_cv(
     )
     
     sheets_data = get_sheets_cv_data(measurements)
-    voltages = sorted(Decimal(v) for v in ["-5", "0", "-35"])
+    voltages = sorted(Decimal(v) for v in ["-5", "0", "-35", "-10"])
     thresholds = get_thresholds(ctx.session, "CV")
     
     file_name = get_indexed_filename(f"Summary-CV-{wafer.name}", ("png", "xlsx"))

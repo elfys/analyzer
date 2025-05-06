@@ -12,6 +12,13 @@
             "args": ["summary", "iv", "-w", "CA14", "-t", "X"]
         },
         {
+            "name": "Summary iva",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "analyzer",
+            "args": ["summary", "iva", "-w", "CA15", "-t", "U"]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

@@ -6,6 +6,7 @@ from analyzer.context import (
 from analyzer.summary.cv import summary_cv
 from analyzer.summary.eqe import summary_eqe
 from analyzer.summary.iv import summary_iv
+from analyzer.summary.iva import summary_iva
 from orm import (
     WaferRepository,
 )
@@ -14,7 +15,7 @@ from orm import (
 @click.group(
     name="summary",
     help="Group of command to analyze and summarize the data",
-    commands=[summary_iv, summary_cv, summary_eqe],
+    commands=[summary_iv, summary_cv, summary_eqe, summary_iva],
 )
 @click.pass_context
 def summary_group(ctx: click.Context):

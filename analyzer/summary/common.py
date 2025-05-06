@@ -1,3 +1,4 @@
+import re
 import decimal
 from decimal import Decimal
 from time import (
@@ -102,7 +103,12 @@ def apply_conditional_formatting(
     
     for chip_type, chip_type_thresholds in thresholds.items():
         def is_current_type(chip_name: str) -> bool:
-            return chip_name.startswith(chip_type)
+            prefix = re.match(r'^[A-Za-z]+', chip_name)
+            return chip_type == prefix.group(0)
+          # Old version below that checks only the first letter of chip name
+          # This is a problem when chip type has 2 letters because it may
+          # end up using acceptance limits of another chip type with same first letter
+          #  return chip_name.startswith(chip_type)
         
         for voltage, threshold in chip_type_thresholds.items():
             try:
@@ -295,7 +301,7 @@ def plot_heatmap_and_histogram(
     clipped_data = np.clip(data, lower_bound, upper_bound)
     
     # Plot histogram
-    hist_ax.hist(data * 1e12, bins=15)
+    hist_ax.hist(clipped_data * 1e12, bins=15)
     hist_ax.set_ylabel("Number of chips")
     
     # Adjust the upper bound for better color scaling

@@ -147,7 +147,7 @@ def summary_iv(
     sheets_data = get_sheets_iv_data(measurements, chips)
     
     summary_voltages = list(sheets_data["anode"].columns.intersection(
-        [Decimal(v) for v in {"-1", "0.01", "5", "6", "10", "20"}]
+        [Decimal(v) for v in {"-1", "0.01", "5", "6", "10", "20", "100"}]
     ))
     thresholds = get_thresholds(ctx.session, "IV")
     

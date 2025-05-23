@@ -1,13 +1,14 @@
 from collections.abc import Callable
+from typing import TypeVar, Optional
 
 import click
 
 from .name_id_interface import is_name_id_sequence
 
+T = TypeVar('T')
 
-def select_one[
-    T
-](
+#def select_one[T](
+def select_one(
     items: list[T],
     prompt: str,
     id_name_getter: Callable[[T], tuple[int, str]] | None = None,

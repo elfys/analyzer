@@ -32,9 +32,10 @@ pass_measure_context = click.make_pass_decorator(MeasureContext)
 
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
 
 
-def from_config[T](path: str):
+def from_config(path: str):
     """
     Decorator to inject a value from the config object as an argument of the decorated function.
     :param path:

@@ -106,8 +106,8 @@ setups:
       - ":PAGE:MEAS:VAR1:MODE SINGLE"  # sets the SWEEP MODE of VAR1 for sweep measurement.(Single)
       - ":PAGE:MEAS:VAR1:SPAC LIN"  # selects the sweep type of VAR1 as linear staircase
       - ":PAGE:MEAS:VAR1:START 20"  # sets the sweep START value of VAR1.
-      - ":PAGE:MEAS:VAR1:STEP -0.5"  # sets the sweep STEP value of VAR1 for the linear sweep.
-      - ":PAGE:MEAS:VAR1:STOP -2"  # sets the sweep STOP value of VAR1.
+      - ":PAGE:MEAS:VAR1:STEP -0.5"  # sets the sweep STEP value of VAR1 for the linear sweep. -0.5-->-0.05 in datasheet
+      - ":PAGE:MEAS:VAR1:STOP -2"  # sets the sweep STOP value of VAR1.-2--> 0V in datasheeg sweep
       - ":PAGE:MEAS:VAR1:COMP 0.1"  # sets the COMPLIANCE value of VAR1.
       - ":PAGE:MEAS:VAR1:PCOM:STATE OFF"  # sets the power compliance of VAR1 to disable
       - ":PAGE:MEAS:HTIM 3"  # sets the HOLD TIME of sweep measurement

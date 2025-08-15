@@ -104,23 +104,31 @@ def measure_matrix(
     setup_config,
     conditions_kwargs,
 ):
-    scanner = cast(PyVisaInstrument, ctx.instruments["scanner"])
-    scanner.write("RX")  # open all channels
-    chips = sorted(matrix.chips, key=lambda c: c.name)
-    for i, chip in enumerate(chips, start=1):
-        scanner.write(f"B{i}C{i}X")  # close and display channel
-        sleep(0.1)  # wait for the channel to open
-        
-        try:
-            measure_setup(automatic, [chip], setup_config, conditions_kwargs)
-        except InvalidMeasurementError:
-            if automatic:
-                ...  # do nothing, measure next pixel
-            else:
-                click.confirm("Do you want to continue measuring other pixels?",
-                              abort=True, default=True)
+    # If matrix pixels should be all measured in parallel, then separate chip names 
+    # for each pixel are needed but otherwise setup can be measured same way as single pixel
+    if matrix["mode"] == "parallel":
+        chips = sorted(matrix.chips, key=lambda c: c.name)
+        measure_setup(automatic, chips, setup_config, conditions_kwargs)
+    # If matrix pixels should be measured in series one at a time, then scanner is 
+    # needed and setup needs to be repeated for each pixel   
+    else:
+        scanner = cast(PyVisaInstrument, ctx.instruments["scanner"])
         scanner.write("RX")  # open all channels
-        ctx.session.commit()  # commit after each chip
+        chips = sorted(matrix.chips, key=lambda c: c.name)
+        for i, chip in enumerate(chips, start=1):
+            scanner.write(f"B{i}C{i}X")  # close and display channel
+            sleep(0.1)  # wait for the channel to open
+            
+            try:
+                measure_setup(automatic, [chip], setup_config, conditions_kwargs)
+            except InvalidMeasurementError:
+                if automatic:
+                    ...  # do nothing, measure next pixel
+                else:
+                    click.confirm("Do you want to continue measuring other pixels?",
+                                abort=True, default=True)
+            scanner.write("RX")  # open all channels
+            ctx.session.commit()  # commit after each chip
 
 
 @from_config("chips")

@@ -2,6 +2,7 @@ from typing import cast
 
 import pandas as pd
 import pyvisa
+import sys
 
 from yoctopuce.yocto_api import (
     YAPI,
@@ -13,10 +14,6 @@ from yoctopuce.yocto_temperature import YTemperature
 rm = pyvisa.ResourceManager()
 iv = cast(pyvisa.resources.MessageBasedResource, rm.open_resource("GPIB0::1::INSTR"))  # Master tool
 iv.timeout = 10000
-
-
-
-
 
 errmsg = YRefParam()
 if YAPI.RegisterHub("usb", errmsg) != YAPI.SUCCESS:
@@ -103,7 +100,7 @@ def sweep_voltage_and_collect_data(vlist):
         
         iv.query("print(waitcomplete(0))")  # wait all nodes in tsplink to complete
         measured_v.append(voltage)
-        if check_compliance() == True:
+        if check_compliance() is True:
             bd = -200 - voltage
             print(f'Breakdown detected at {bd} V!')
             break
@@ -128,7 +125,6 @@ def sweep_voltage_and_collect_data(vlist):
     data["Q3 corrected"] = compute_corrected_current(t.get_currentValue(), data.get("Q3 (U3 A)"))
     data["Q4 corrected"] = compute_corrected_current(t.get_currentValue(), data.get("Q4 (U3 B)"))
 
-
     iv.write("node[1].smua.nvbuffer1.clear()")
     iv.write("node[1].smub.nvbuffer2.clear()")
     iv.write("node[2].smua.nvbuffer1.clear()")
@@ -137,19 +133,20 @@ def sweep_voltage_and_collect_data(vlist):
     iv.write("node[3].smub.nvbuffer2.clear()")
     return data
 
+
 def compute_corrected_current(temp: float, current: float):
     target_temperature = 25
     correction_factor = 1.15 ** (target_temperature - temp)
-    corrected_current = [i*correction_factor for i in current]
-    return  corrected_current
+    corrected_current = [i * correction_factor for i in current]
+    return corrected_current
 
 
-#def save_to_excel(data1, data2, data3):
+# def save_to_excel(data1, data2, data3):
 def save_to_excel(data2, temp):
     filename = f"temperature {temp}.xlsx"
     with pd.ExcelWriter(filename) as writer:
-        #df1 = pd.DataFrame(data1)
-        #df1.to_excel(writer, sheet_name="Sweep 1", index=False)
+        # df1 = pd.DataFrame(data1)
+        # df1.to_excel(writer, sheet_name="Sweep 1", index=False)
         
         df2 = pd.DataFrame(data2)
         df2.to_excel(writer, sheet_name="Sweep 2", index=False)

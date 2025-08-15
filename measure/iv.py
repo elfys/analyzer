@@ -126,7 +126,7 @@ def measure_matrix(
                     ...  # do nothing, measure next pixel
                 else:
                     click.confirm("Do you want to continue measuring other pixels?",
-                                abort=True, default=True)
+                                    abort=True, default=True)
             scanner.write("RX")  # open all channels
             ctx.session.commit()  # commit after each chip
 

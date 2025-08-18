@@ -9,6 +9,9 @@ from yoctopuce.yocto_api import (
 )
 from yoctopuce.yocto_temperature import YTemperature
 
+print('Enter sample name:')
+chip_name = input()
+
 # Initialize the VISA resource manager and open instruments
 rm = pyvisa.ResourceManager()
 iv = cast(pyvisa.resources.MessageBasedResource, rm.open_resource("GPIB0::1::INSTR"))  # Master tool
@@ -59,7 +62,8 @@ def configure_other_channels():
     ]
     for channel in channels:
         iv.write(f"{channel}.source.output = {channel}.OUTPUT_ON")
-        iv.write(f"{channel}.measure.nplc = 0.1")
+        #iv.write(f"{channel}.measure.nplc = 0.1")
+        iv.write(f"{channel}.measure.nplc = 1.0")
         iv.write(f"{channel}.measure.autozero = {channel}.AUTOZERO_ONCE")
         iv.write(f"{channel}.measure.lowrangei = 1e-9")
         iv.write(f"{channel}.nvbuffer1.clear()")
@@ -67,7 +71,6 @@ def configure_other_channels():
         iv.write(f"{channel}.nvbuffer1.appendmode = 1")
         iv.write(f"{channel}.nvbuffer2.appendmode = 1")
         
-
 
 def sweep_voltage_and_collect_data(vlist):
     data = {"Voltage": vlist}
@@ -121,8 +124,8 @@ def compute_corrected_current(temp: float, current: float):
 
 
 #def save_to_excel(data1, data2, data3):
-def save_to_excel(data2, data3, temp):
-    filename = f"temperature {temp}.xlsx"
+def save_to_excel(data2, data3, temp, sample):
+    filename = f"{sample} temperature {temp}.xlsx"
     with pd.ExcelWriter(filename) as writer:
         #df1 = pd.DataFrame(data1)
         #df1.to_excel(writer, sheet_name="Sweep 1", index=False)
@@ -152,7 +155,9 @@ configure_other_channels()
 
 # Second sweep (No current limit)
 vlist2 = [-2, -1, 0]
+#vlist2 = [ 0]
 data2 = sweep_voltage_and_collect_data(vlist2)
+print(pd.DataFrame(data2).to_string(index=False, float_format="%.2e",))
 
 # Reconfigure with current limit for the third sweep
 # configure_master(current_limit=10e-6)
@@ -167,7 +172,8 @@ data3 = sweep_voltage_and_collect_data(vlist3)
 # #save_to_excel(data1, data2, data3)
 
 # save_to_excel(data2, data3)
-save_to_excel(data2, data3, temp)
+save_to_excel(data2, data3, temp, chip_name)
+# save_to_excel(data2, temp, chip_name)
 # save_to_excel(data2, temp)
 
 # # Turn off all outputs

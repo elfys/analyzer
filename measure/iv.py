@@ -106,7 +106,7 @@ def measure_matrix(
 ):
     # If matrix pixels should be all measured in parallel, then separate chip names 
     # for each pixel are needed but otherwise setup can be measured same way as single pixel
-    if matrix["mode"] == "parallel":
+    if ctx.configs["matrix"].get("mode") == "parallel":
         chips = sorted(matrix.chips, key=lambda c: c.name)
         measure_setup(automatic, chips, setup_config, conditions_kwargs)
     # If matrix pixels should be measured in series one at a time, then scanner is 

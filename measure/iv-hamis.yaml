@@ -19,7 +19,7 @@ instruments:
     kind: "pyvisa"
     invert_voltage: false # NO, the instrument is connected such that the voltage is not inverted
     kwargs:
-      timeout: 20000 # 30s
+      timeout: 40000 # 30s
   
 
 
@@ -126,7 +126,7 @@ setups:
       - "node[1].smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "node[1].smua.measure.autozero = node[1].smua.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
       - "node[1].smua.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
-    #  - "node[1].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      - "node[1].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
      
       # configures settings for guard ring channel
       - "node[1].smub.source.func = node[1].smub.OUTPUT_DCVOLTS" # selects the voltage source function
@@ -136,7 +136,7 @@ setups:
       - "node[1].smub.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "node[1].smub.measure.autozero = node[1].smub.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
       - "node[1].smub.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
-    #  - "node[1].smub.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      - "node[1].smub.measure.delay = 0" # timer is used for delay, so this delay is set to 0
      
       # configures settings for q1 channel
       - "node[2].smua.source.func = node[2].smua.OUTPUT_DCVOLTS" # selects the voltage source function
@@ -146,7 +146,7 @@ setups:
       - "node[2].smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "node[2].smua.measure.autozero = node[2].smua.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
       - "node[2].smua.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
-      #- "node[2].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      - "node[2].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
       
       # configures settings for q2 channel
       - "node[2].smub.source.func = node[2].smub.OUTPUT_DCVOLTS" # selects the voltage source function
@@ -156,7 +156,7 @@ setups:
       - "node[2].smub.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "node[2].smub.measure.autozero = node[2].smub.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
       - "node[2].smub.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
-     # - "node[2].smub.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      - "node[2].smub.measure.delay = 0" # timer is used for delay, so this delay is set to 0
 
       # configures settings for q3 channel
       - "node[3].smua.source.func = node[3].smua.OUTPUT_DCVOLTS" # selects the voltage source function
@@ -166,7 +166,7 @@ setups:
       - "node[3].smua.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "node[3].smua.measure.autozero = node[3].smua.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
       - "node[3].smua.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
-     # - "node[3].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      - "node[3].smua.measure.delay = 0" # timer is used for delay, so this delay is set to 0
       
       # configures settings for q4 channel
       - "node[3].smub.source.func = node[3].smub.OUTPUT_DCVOLTS" # selects the voltage source function
@@ -176,7 +176,7 @@ setups:
       - "node[3].smub.measure.nplc = 1" # sets the integration time. 0.01 - fast, 0.1 - med, 1 - normal
       - "node[3].smub.measure.autozero = node[3].smub.AUTOZERO_ONCE" # disables automatic updates to the internal reference measurements of the instrument
       - "node[3].smub.measure.lowrangei=1e-10" # sets the lowest measurement range that is used when the instruments is autoranging
-     # - "node[3].smub.measure.delay = 0" # timer is used for delay, so this delay is set to 0
+      - "node[3].smub.measure.delay = 0" # timer is used for delay, so this delay is set to 0
 
       # configures tsp-link triggers for all nodes
       - "node[1].tsplink.trigger[1].clear()" # clears the event detector
@@ -203,15 +203,15 @@ setups:
       # Sets the sweep timer and configures the trigger model
       # Timer 1 is used to trigger the change of bias
       - "node[1].trigger.timer[1].reset()" # resets the timer
-      - "node[1].trigger.timer[1].delay = 1" # sets wait time before the first point of the sweep
+      - "node[1].trigger.timer[1].delay = 0.01" # sets wait time before the first point of the sweep
       - "node[1].trigger.timer[1].stimulus = node[1].tsplink.trigger[3].EVENT_ID" # timer is activated once blender event occurs, i.e. all SMUs are done with measurement
-      - "node[1].trigger.timer[1].count = points" # timer triggers as many times as there are voltage points in sweep
+      - "node[1].trigger.timer[1].count = 1" # 1 measurement as each bias point. If set to >1 timer triggers without waiting stimulus
       - "node[1].trigger.timer[1].passthrough = false" # triggers are passed through immediately
       # Timer 2 is used to trigger the measurements after bias is set
       - "node[1].trigger.timer[2].reset()" # resets timer
       - "node[1].trigger.timer[2].stimulus = node[1].smua.trigger.SOURCE_COMPLETE_EVENT_ID" #timer is triggered when bias is changed
       - "node[1].trigger.timer[2].passthrough = false" # triggers are not immediately passed through but only after delay
-      - "node[1].trigger.timer[2].delay = 0.6" # delay before first measurement point
+      - "node[1].trigger.timer[2].delay = 0.01" # delay before first measurement point
       - "node[1].trigger.timer[2].count = 1" # 1 measurement at each bias point
 
       # Sets up event blender that triggers an event once all SMUs are ready with their measurement

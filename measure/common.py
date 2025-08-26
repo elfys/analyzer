@@ -19,8 +19,17 @@ from .instrument import PyVisaInstrument
 
 
 @pass_measure_context
-def apply_configs(ctx: MeasureContext, commands: list[str]):
-    instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["main"])
+def apply_configs(ctx: MeasureContext, commands: list[str], instrument_type="main"):
+    """
+    Applies all measurement settings defined in yaml file under "setups" with certain "name"
+    instrument_type defines to which instruments should be applied. If it is not given, "main" is assumed
+    
+    :param ctx: The context object (provided by the click decorator).
+    :param commands: List of commands to execute.
+    :param instrument_type: Defines to which instrument the commands should be sent. "main" by default
+    :return:
+    """
+    instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments[instrument_type])
     for command in commands:
         instrument.write(command)
 
@@ -46,20 +55,69 @@ def execute_command(
         instrument.handle_error(e)
 
 
+# Assumption: when mux mode is used and setup name is "cv", only CV is always measured. If instrument named "main" exists, then mux mode is not in use.
+# If no instrument with "main" exists, then instuments named "iv" and "cv" need to be defined in the yaml file
 @from_config("measure")
 @pass_measure_context
-def get_raw_measurements(ctx: MeasureContext, commands: list[dict]) -> dict[str, list]:
-    instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["main"])
-    measurements: dict[str, list] = {}
-    for command in commands:
-        value = execute_command(instrument, command["command"], command["type"])
-        if "name" in command:
-            if isinstance(value, list):
-                measurements[command["name"]] = value
-            else:
-                raise click.BadParameter(
-                    f"Invalid output for command {command['type']}:{command['command']}: {repr(value)}."
-                    f"A list of values was expected.")
+def get_raw_measurements(ctx: MeasureContext, commands: list[dict], sweep_type = "single") -> dict[str, list]:
+    """
+    Measures raw data by executing the part of the yaml file that executes the measurement loop.
+    Assumptions: 
+    - When mux mode is used and setup name is "cv", only CV is always measured. 
+    - If instrument named "main" exists, then mux mode is not in use.
+    - If no instrument with "main" exists, then instuments named "iv" and "cv" need to be defined in the yaml file
+    
+    :param ctx: The context object (provided by the click decorator).
+    :param commands: List of commands to execute.
+    :param sweep_type: The type of sweep (iv or cv) that the commands are related to. Relevant only if instrument called "main" does not exist, i.e. mux is used
+    :return: dict[str, list]: Dictionary containing raw measurement data
+    """
+    if ctx.instruments.get("main") is not None:
+        # Instrument called "main" is found, so only one instrument needs to be controlled and mux card is not used 
+        instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["main"])
+        measurements: dict[str, list] = {}
+        for command in commands:
+            value = execute_command(instrument, command["command"], command["type"])
+            if "name" in command:
+                # If command has property name, the output of the command should be assigned to variable with that name
+                if isinstance(value, list):
+                    measurements[command["name"]] = value
+                else:
+                    raise click.BadParameter(
+                        f"Invalid output for command {command['type']}:{command['command']}: {repr(value)}."
+                        f"A list of values was expected.")
+    else:
+        # Instrument called "main" is not found which means that mux board is used and therefore instruments called 
+        # "iv" and "cv" needs to be defined and both are controlled
+        iv_instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["iv"])
+        cv_instrument: PyVisaInstrument = cast(PyVisaInstrument, ctx.instruments["cv"])
+        measurements: dict[str, list] = {}
+        for command in commands:
+            if command["command"].get("sweep") is sweep_type:
+                if command["command"] is "loop":
+                    # If command is called "loop" it means that all commands within its "steps" list need to be repeated
+                    # as many times as count dictates. Otherwise each command is executed only once
+                    iterations = command["command"].get("count")
+                    for i in range(iterations):
+                        for step in command["command"].get("steps"):
+                            if step["tool"] is "iv":
+                                value = execute_command(iv_instrument, step["command"], step["type"]) 
+                            elif step["tool"] is "cv":
+                                value = execute_command(cv_instrument, step["command"], step["type"])                  
+                else:
+                    if command["tool"] is "iv":
+                        value = execute_command(iv_instrument, command["command"], command["type"])
+                    elif command["tool"] is "cv":
+                        value = execute_command(cv_instrument, command["command"], command["type"])
+                    else:
+                        raise click.BadParameter("Invalid tool name or tool not specified.")
+                    if "name" in command:
+                        if isinstance(value, list):
+                            measurements[command["name"]] = value
+                        else:
+                            raise click.BadParameter(
+                                f"Invalid output for command {command['type']}:{command['command']}: {repr(value)}."
+                                f"A list of values was expected.")    
     return measurements
 
 

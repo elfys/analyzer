@@ -15,9 +15,10 @@ from .context import MeasureContext
 from .cv import cv
 from .instrument import InstrumentFactory
 from .iv import measure_iv_command
+from .mux import mux
 
 
-@click.group(name="measure", commands=[measure_iv_command, cv])
+@click.group(name="measure", commands=[measure_iv_command, cv, mux])
 @click.pass_context
 @click.option(
     "-c",

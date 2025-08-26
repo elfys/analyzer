@@ -150,7 +150,10 @@ def measure_setup(
     if (minimization_config := setup_config["program"].get("minimum")) is not None:
         raw_measurements = get_minimal_measurements(minimization_config)
     else:
-        raw_measurements = get_raw_measurements()
+        if setup_config["name"] is "iv":
+            raw_measurements = get_raw_measurements(sweep_type="iv")
+        else:
+            raw_measurements = get_raw_measurements()
     
     iv_cond_repo = IvConditionsRepository(ctx.session)
     for chip, chip_config in zip(chips, chip_configs, strict=True):

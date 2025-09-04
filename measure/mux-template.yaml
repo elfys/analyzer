@@ -23,6 +23,7 @@ matrix:
   height: 2
 
 measure:
+  # Commands to initiate IV sweep
   - command: "node[3].digio.writeport(426)"
     type: "write"
     tool: "iv"
@@ -84,7 +85,7 @@ measure:
     tool: "iv"
     sweep: "iv"
 
-  # Read data from buffers  
+  # Read IV data from buffers  
   - command: "printbuffer(1, node[1].smua.nvbuffer1.n, node[1].smua.nvbuffer1.sourcevalues)"
     type: "query_csv_values"
     name: voltage_input
@@ -145,7 +146,7 @@ measure:
         type: "write"
         tool: "cv"
         sweep: "cv" 
-      - command: "delay(0.1)"
+      - command: "delay(0.1)" # Delay between changing bias values. Needs to be longer than CV measurement time for one point
         type: "write"
         tool: "iv"
         sweep: "cv" 
@@ -188,7 +189,7 @@ measure:
         type: "write"
         tool: "cv"
         sweep: "cv" 
-      - command: "delay(0.1)"
+      - command: "delay(0.1)" # Delay between changing bias values. Needs to be longer than CV measurement time for one point
         type: "write"
         tool: "iv"
         sweep: "cv" 
@@ -231,7 +232,7 @@ measure:
         type: "write"
         tool: "cv"
         sweep: "cv" 
-      - command: "delay(0.1)"
+      - command: "delay(0.1)" # Delay between changing bias values. Needs to be longer than CV measurement time for one point
         type: "write"
         tool: "iv"
         sweep: "cv" 
@@ -274,7 +275,7 @@ measure:
         type: "write"
         tool: "cv"
         sweep: "cv" 
-      - command: "delay(0.1)"
+      - command: "delay(0.1)" # Delay between changing bias values. Needs to be longer than CV measurement time for one point
         type: "write"
         tool: "iv"
         sweep: "cv" 
@@ -297,6 +298,7 @@ measure:
     tool: "cv"
     sweep: "cv"
 
+  # Measurement is done, open all mux relays and turn off voltages
   - command: "node[3].digio.writeport(0)"
     type: "write"
     tool: "iv"
@@ -561,8 +563,9 @@ setups:
       - "tsplink.reset()"
       - "reset()"
       - "node[3].digio.writeport(0)"
-      - "node[1].smua.trigger.source.linearv(0, 150, 31)"
 
+      # Settings for all IV SMUs
+      - "node[1].smua.trigger.source.linearv(0, 150, 31)"
       - "node[1].smua.source.func = node[1].smua.OUTPUT_DCVOLTS"
       
       - "node[1].smub.source.func = node[1].smub.OUTPUT_DCVOLTS"
@@ -585,9 +588,11 @@ setups:
       - "node[3].smub.source.levelv = 0"
       - "node[3].smub.source.output = node[3].smub.OUTPUT_ON"
 
+      # Configures tsplink triggering model 
       - "node[1].tsplink.trigger[1].clear()"
       - "node[1].tsplink.trigger[1].mode = tsplink.TRIG_FALLING"
 
+      # Configures cathode channel sourcing settings and buffer 
       - "node[1].smua.source.autorangev = smua.AUTORANGE_ON"
       - "node[1].smua.source.autorangei = smua.AUTORANGE_ON"
       - "node[1].smua.measure.nplc = 1"
@@ -602,12 +607,13 @@ setups:
       - "node[1].smua.nvbuffer1.fillmode = node[1].smua.FILL_WINDOW" # After buffer is full, new values overwrite old data. This way buffer contains data only from one sweep and not all 4
       - "node[1].smua.nvbuffer1.fillcount = 31" #Size of the buffer for data, needs to be same than amount of points in sweep
 
+      # Configures cathode channel triggering model
       - "node[1].smua.trigger.source.listv(vlist)"
       - "node[1].smua.trigger.source.stimulus = node[1].tsplink.trigger[1].EVENT_ID"
       - "node[1].smua.trigger.source.action = node[1].smua.ENABLE"
       - "node[1].smua.trigger.count = 124"
       - "node[1].smua.trigger.initiate()"
-      - "waitcomplete(0)"
+      - "waitcomplete(0)" # Wait that all settings are configured before measurements can start
 
     cv_instrument:
       - "*RST; *CLS"

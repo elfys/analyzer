@@ -93,6 +93,7 @@ class SimpleChip(AbstractChip):
         "F": (2.56, 1.25),
         "G": (1.4, 3.25),
         "S": (1.825, 1.825),
+        "SMU": (99, 99),
         "T": (1.45, 1.45),
         "V": (10, 10),
         "VH": (10, 10),
@@ -100,6 +101,7 @@ class SimpleChip(AbstractChip):
         "XH": (1, 1),
         "Y": (2, 2),
         "YH": (2, 2),
+        "Z": (2.4, 2.4),
     }
     chip_size: ClassVar[tuple[float, float]]
     
@@ -158,8 +160,8 @@ class MatrixChip(SimpleChip):
     Represents chips that are part of a matrix, such as Q, R and W chips.
     """
     
-    xcoord_re = re.compile(r'^\d\d(?P<matrix>\d\d)_\d(?P<px>\d)$')
-    ycoord_re = re.compile(r'^(?P<matrix>\d\d)\d\d_(?P<px>\d)\d$')
+    xcoord_re = re.compile(r'^\d\d(?P<matrix>\d\d)[A-Za-z0-9]*_\d(?P<px>\d)$')
+    ycoord_re = re.compile(r'^(?P<matrix>\d\d)\d\d[A-Za-z0-9]*_(?P<px>\d)\d$')
     
     __mapper_args__ = {"polymorphic_abstract": True}
     chip_sizes = {
@@ -184,7 +186,7 @@ class MatrixChip(SimpleChip):
     
     @property
     def width(self):
-        return 1 / self.matrix.width
+        return 1 / (self.matrix.width + 1)
     
     @property
     def y_coordinate(self):
@@ -195,7 +197,7 @@ class MatrixChip(SimpleChip):
     
     @property
     def height(self):
-        return 1 / self.matrix.height
+        return 1 / (self.matrix.height + 1)
 
 
 class EqeChip(SimpleChip):

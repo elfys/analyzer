@@ -11,6 +11,7 @@ from typing import (
 )
 
 import click
+import re
 import numpy as np
 import pandas as pd
 from openpyxl.styles import PatternFill
@@ -183,7 +184,7 @@ def summary_iv(
     
     exel_file_name = f"{file_name}.xlsx"
     info = get_info(wafer=wafer, chip_states=chip_states, measurements=measurements)
-    save_iv_summary_to_excel(sheets_data, info, exel_file_name, summary_voltages, thresholds)
+    save_iv_summary_to_excel(sheets_data, info, exel_file_name, summary_voltages, thresholds, chips_type)
     
     ctx.logger.info(f"Summary data is saved to {exel_file_name}")
 
@@ -220,14 +221,40 @@ def save_iv_summary_to_excel(
     file_name: str,
     voltages: Iterable[Decimal],
     thresholds: dict[str, dict[Decimal, float]],
+    chip_type: str,
 ):
     """
     Save IV summary data to an Excel file.
     """
-    summary_df = get_slice_by_voltages(sheets_data["anode"], voltages)
-    summary_df.insert(
-        0, "Temperature",
-        cast(pd.Series, sheets_data["temperatures"]["Temperature"].apply(lambda x: f"{x:.2f}")))
+
+    if chip_type == "W":
+        summary_df_an = get_slice_by_voltages(sheets_data["anode"], [200])
+        summary_df_gr = get_slice_by_voltages(sheets_data["guard_ring"], [200])
+        temps = sheets_data["temperatures"]
+        combined_df = pd.concat([summary_df_an, summary_df_gr, temps], axis=1)
+        sorted_df = combined_df.sort_index()
+        chip_names = sorted_df.index.values
+        chip_numbers = [re.search(r'(W\d{4}[^_]{0,3})', s).group(1) for s in chip_names]
+        unique_numbers = sorted(set(chip_numbers))
+        frames = []
+        for i in unique_numbers:
+           # print(i)
+           # print(sorted_df.index.str.contains(i))
+            df = sorted_df[sorted_df.index.str.contains(i)]
+            size = df.shape
+            if (size[0] == 8 and size[1] == 3):
+                reshaped_row = pd.DataFrame({"Temperature": df.iloc[4, 2], "Q1 @ 200V": [df.iloc[4, 0]], "Q2 @ 200V": [df.iloc[5, 0]], "Q3 @ 200V": [df.iloc[6, 0]], "Q4 @ 200V": [df.iloc[7, 0]],
+                                             "GR @ 200V": [df.iloc[4, 1]], "Q1 NG @ 200V": [df.iloc[0, 0]], "Q2 NG @ 200V": [df.iloc[1, 0]], "Q3 NG @ 200V": [df.iloc[2, 0]],
+                                             "Q4 NG 200V": [df.iloc[3, 0]], "GR NG 200V": [df.iloc[0, 1]]},
+                                             index=[i]) 
+                frames.append(reshaped_row)
+        summary_df = pd.concat(frames)
+    else:
+
+        summary_df = get_slice_by_voltages(sheets_data["anode"], voltages)
+        summary_df.insert(
+            0, "Temperature",
+            cast(pd.Series, sheets_data["temperatures"]["Temperature"].apply(lambda x: f"{x:.2f}")))
     rules = {
         "lessThan": PatternFill(bgColor="ee9090", fill_type="solid"),  # red, failed
         "greaterThanOrEqual": PatternFill(bgColor="90ee90", fill_type="solid"),  # green, ok
@@ -241,6 +268,7 @@ def save_iv_summary_to_excel(
     }
     
     with pd.ExcelWriter(file_name) as writer:
+
         summary_df.to_excel(writer, sheet_name="Summary")
         apply_conditional_formatting(
             writer.book["Summary"],

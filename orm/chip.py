@@ -112,16 +112,18 @@ class SimpleChip(AbstractChip):
     
     @property
     def x_coordinate(self):
-        digits = re.sub(rf'^{self.type}', '', self.name)
-        if not digits.isdigit() or len(digits) %2 != 0:
-            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
+        name_without_type = re.sub(rf'^{self.type}', '', self.name)
+        digits = re.search(r'\d+', name_without_type).group() if re.search(r'\d+', name_without_type) else ''
+        if not digits or len(digits) % 2 != 0:
+            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by even number of digits")
         return int(digits[(len(digits)//2):])
     
     @property
     def y_coordinate(self):
-        digits = re.sub(rf'^{self.type}', '', self.name)
-        if not digits.isdigit() or len(digits) %2 != 0:
-            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by 4 digits")
+        name_without_type = re.sub(rf'^{self.type}', '', self.name)
+        digits = re.search(r'\d+', name_without_type).group() if re.search(r'\d+', name_without_type) else ''
+        if not digits or len(digits) % 2 != 0:
+            raise ValueError(f"Could not parse chip coordinate {self.name}. Expected format is chip type followed by even number of digits")
         return int(digits[:(len(digits)//2)])
     
     @property
@@ -168,6 +170,7 @@ class MatrixChip(SimpleChip):
         "Q": (.448, .540),  # one pixel out of 9
         "R": (.830, .665),  # one pixel out of 9
         "W": (6.9, 6.9),  # one of 4 segments of a circle
+        "PCM": (10, 10),
     }
     
     matrix_id: Mapped[int | None] = mapped_column(

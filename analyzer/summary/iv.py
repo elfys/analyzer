@@ -227,6 +227,9 @@ def save_iv_summary_to_excel(
     Save IV summary data to an Excel file.
     """
 
+    # In case the chip type is W, the summary sheet will be formatted differently than otherwise.
+    # It will combine all the different pixels/measurements as different columns of a single row instead
+    # of adding each pixel/measurement on seprate row
     if chip_type == "W":
         summary_df_an = get_slice_by_voltages(sheets_data["anode"], [200])
         summary_df_gr = get_slice_by_voltages(sheets_data["guard_ring"], [200])
@@ -238,14 +241,35 @@ def save_iv_summary_to_excel(
         unique_numbers = sorted(set(chip_numbers))
         frames = []
         for i in unique_numbers:
-           # print(i)
-           # print(sorted_df.index.str.contains(i))
             df = sorted_df[sorted_df.index.str.contains(i)]
             size = df.shape
             if (size[0] == 8 and size[1] == 3):
                 reshaped_row = pd.DataFrame({"Temperature": df.iloc[4, 2], "Q1 @ 200V": [df.iloc[4, 0]], "Q2 @ 200V": [df.iloc[5, 0]], "Q3 @ 200V": [df.iloc[6, 0]], "Q4 @ 200V": [df.iloc[7, 0]],
                                              "GR @ 200V": [df.iloc[4, 1]], "Q1 NG @ 200V": [df.iloc[0, 0]], "Q2 NG @ 200V": [df.iloc[1, 0]], "Q3 NG @ 200V": [df.iloc[2, 0]],
                                              "Q4 NG 200V": [df.iloc[3, 0]], "GR NG 200V": [df.iloc[0, 1]]},
+                                             index=[i]) 
+                frames.append(reshaped_row)
+        summary_df = pd.concat(frames)
+
+    # In case the chip type is D, the summary sheet will be formatted differently than otherwise (similar to W).
+    # It will combine all the different pixels as different columns of a single row instead
+    # of adding each pixel on seprate row
+    elif chip_type == "D":
+        summary_df_rev = get_slice_by_voltages(sheets_data["anode"], [Decimal(v) for v in {"-1", "0.01"}])
+        temps = sheets_data["temperatures"]
+        combined_df = pd.concat([summary_df_rev, temps], axis=1)
+        sorted_df = combined_df.sort_index()
+        chip_names = sorted_df.index.values
+        chip_numbers = [re.search(r'(D\d{6}[^_]{0,1})', s).group(1) for s in chip_names]
+        unique_numbers = sorted(set(chip_numbers))
+        frames = []
+        for i in unique_numbers:
+            df = sorted_df[sorted_df.index.str.contains(i)]
+            size = df.shape
+            if (size[0] == 5 and size[1] == 3):
+                reshaped_row = pd.DataFrame({"Temperature": df.iloc[4, 2], "P1 @ -1V": [df.iloc[0, 0]], "P2 @ -1V": [df.iloc[1, 0]], "P3 @ -1V": [df.iloc[2, 0]], "P4 @ -1V": [df.iloc[3, 0]],
+                                             "P5 @ -1V": [df.iloc[4, 0]], "P1 @ 0.01V": [df.iloc[0, 1]], "P2 @ 0.01V": [df.iloc[1, 1]], "P3 @ 0.01V": [df.iloc[2, 1]],
+                                             "P4 0.01V": [df.iloc[3, 1]], "P5 @ 0.01V": [df.iloc[4, 1]]},
                                              index=[i]) 
                 frames.append(reshaped_row)
         summary_df = pd.concat(frames)
